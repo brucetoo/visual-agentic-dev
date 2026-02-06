@@ -10,6 +10,7 @@ declare class VDevWebSocketServer {
     private handleExecuteTask;
     private handleCancelTask;
     private handleGetStatus;
+    private handleResolveProjectPath;
     private send;
     close(): void;
 }
@@ -20,18 +21,21 @@ interface SourceLocation {
     columnNumber: number;
 }
 interface ClientMessage {
-    type: 'AUTH' | 'EXECUTE_TASK' | 'CANCEL_TASK' | 'GET_STATUS';
+    type: 'AUTH' | 'EXECUTE_TASK' | 'CANCEL_TASK' | 'GET_STATUS' | 'RESOLVE_PROJECT_PATH';
     id: string;
     token?: string;
-    payload?: ExecuteTaskPayload;
+    payload?: ExecuteTaskPayload | ResolveProjectPathPayload;
 }
 interface ExecuteTaskPayload {
     source: SourceLocation;
     instruction: string;
     projectPath: string;
 }
+interface ResolveProjectPathPayload {
+    port: number;
+}
 interface ServerMessage {
-    type: 'AUTH_RESULT' | 'TASK_STARTED' | 'TASK_PROGRESS' | 'TASK_LOG' | 'TASK_COMPLETED' | 'TASK_ERROR';
+    type: 'AUTH_RESULT' | 'TASK_STARTED' | 'TASK_PROGRESS' | 'TASK_LOG' | 'TASK_COMPLETED' | 'TASK_ERROR' | 'PROJECT_PATH_RESOLVED';
     id: string;
     payload?: unknown;
 }
@@ -89,4 +93,4 @@ interface ServerOptions {
  */
 declare function startServer(options?: ServerOptions): VDevWebSocketServer;
 
-export { ClaudeCodeRunner, type ClientMessage, type ExecuteResult, type ExecuteTaskPayload, PromptBuilder, type ServerMessage, type ServerOptions, type SourceLocation, type StreamMessage, VDevWebSocketServer, startServer };
+export { ClaudeCodeRunner, type ClientMessage, type ExecuteResult, type ExecuteTaskPayload, PromptBuilder, type ResolveProjectPathPayload, type ServerMessage, type ServerOptions, type SourceLocation, type StreamMessage, VDevWebSocketServer, startServer };

@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { WS_URL } from '../../shared/constants';
-import type { Message, ConnectionStatus, TaskPayload } from '../../shared/types';
+import type { Message, ConnectionStatus, TaskPayload, ResolveProjectPathPayload } from '../../shared/types';
 
 interface StreamMessage {
     type: string;
@@ -12,17 +12,29 @@ interface StreamMessage {
     };
 }
 
-export function useWebSocket() {
+interface PendingResolve {
+    resolve: (path: string | null) => void;
+    reject: (error: Error) => void;
+}
+
+interface UseWebSocketOptions {
+    onMessage?: (role: Message['role'], content: string) => void;
+}
+
+export function useWebSocket(options: UseWebSocketOptions = {}) {
+    const { onMessage } = options;
     const [status, setStatus] = useState<ConnectionStatus>('disconnected');
-    const [messages, setMessages] = useState<Message[]>([]);
     const wsRef = useRef<WebSocket | null>(null);
+    const pendingResolvesRef = useRef<Map<string, PendingResolve>>(new Map());
+    const onMessageRef = useRef(onMessage);
+
+    // Keep ref updated
+    useEffect(() => {
+        onMessageRef.current = onMessage;
+    }, [onMessage]);
 
     const addMessage = useCallback((role: Message['role'], content: string) => {
-        setMessages(prev => [...prev, {
-            role,
-            content,
-            timestamp: Date.now(),
-        }]);
+        onMessageRef.current?.(role, content);
     }, []);
 
     const connect = useCallback(() => {
@@ -63,6 +75,15 @@ export function useWebSocket() {
                 case 'TASK_ERROR':
                     addMessage('system', `❌ 错误: ${data.payload.error}`);
                     break;
+
+                case 'PROJECT_PATH_RESOLVED':
+                    // Handle project path resolution response
+                    const pending = pendingResolvesRef.current.get(data.id);
+                    if (pending) {
+                        pending.resolve(data.payload?.projectPath || null);
+                        pendingResolvesRef.current.delete(data.id);
+                    }
+                    break;
             }
         };
 
@@ -74,6 +95,11 @@ export function useWebSocket() {
         ws.onclose = () => {
             setStatus('disconnected');
             wsRef.current = null;
+            // Reject all pending resolves
+            for (const pending of pendingResolvesRef.current.values()) {
+                pending.reject(new Error('WebSocket closed'));
+            }
+            pendingResolvesRef.current.clear();
         };
     }, [addMessage]);
 
@@ -97,9 +123,31 @@ export function useWebSocket() {
         }));
     }, [status, addMessage]);
 
-    const clearMessages = useCallback(() => {
-        setMessages([]);
-    }, []);
+    const resolveProjectPath = useCallback((port: number): Promise<string | null> => {
+        return new Promise((resolve, reject) => {
+            if (!wsRef.current || status !== 'connected') {
+                resolve(null);
+                return;
+            }
+
+            const id = crypto.randomUUID();
+            pendingResolvesRef.current.set(id, { resolve, reject });
+
+            wsRef.current.send(JSON.stringify({
+                type: 'RESOLVE_PROJECT_PATH',
+                id,
+                payload: { port } as ResolveProjectPathPayload,
+            }));
+
+            // Timeout after 5 seconds
+            setTimeout(() => {
+                if (pendingResolvesRef.current.has(id)) {
+                    pendingResolvesRef.current.delete(id);
+                    resolve(null);
+                }
+            }, 5000);
+        });
+    }, [status]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -110,10 +158,11 @@ export function useWebSocket() {
 
     return {
         status,
-        messages,
         connect,
         disconnect,
         sendTask,
-        clearMessages,
+        resolveProjectPath,
     };
 }
+
+

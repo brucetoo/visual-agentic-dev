@@ -1,11 +1,33 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChatPanel } from './components/ChatPanel';
 import { SourceInfo } from './components/SourceInfo';
 import { StatusBar } from './components/StatusBar';
 import { Settings } from './components/Settings';
 import { useWebSocket } from './hooks/useWebSocket';
 import { STORAGE_KEY_PROJECT_PATH } from '../shared/constants';
-import type { SourceLocation, ElementInfo } from '../shared/types';
+import type { SourceLocation, ElementInfo, Message } from '../shared/types';
+
+// Storage keys
+const STORAGE_KEY_PROJECT_STATES = 'vdevProjectStates';
+
+interface ProjectState {
+    messages: Message[];
+    selectedSource: SourceLocation | null;
+    elementInfo: ElementInfo | null;
+}
+
+// Extract port from URL (e.g., http://localhost:3000 -> 3000)
+function extractPort(url: string): number | null {
+    try {
+        const urlObj = new URL(url);
+        if (urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1') {
+            return parseInt(urlObj.port, 10) || (urlObj.protocol === 'https:' ? 443 : 80);
+        }
+    } catch {
+        // Invalid URL
+    }
+    return null;
+}
 
 const App: React.FC = () => {
     const [selectedSource, setSelectedSource] = useState<SourceLocation | null>(null);
@@ -13,21 +35,160 @@ const App: React.FC = () => {
     const [isInspecting, setIsInspecting] = useState(false);
     const [projectPath, setProjectPath] = useState<string>('');
     const [showSettings, setShowSettings] = useState(false);
+    const [isAutoDetected, setIsAutoDetected] = useState(false);
+    const [messages, setMessages] = useState<Message[]>([]);
 
-    const { status, messages, sendTask, connect, disconnect, clearMessages } = useWebSocket();
+    // Ref for project states to avoid stale closure issues
+    const projectStatesRef = useRef<Map<string, ProjectState>>(new Map());
+    const currentProjectRef = useRef<string>('');
 
-    // Load project path from storage
+    // Cache for origin -> projectPath mapping
+    const pathCacheRef = useRef<Map<string, string>>(new Map());
+
+    // Message handler for WebSocket
+    const handleMessage = useCallback((role: Message['role'], content: string) => {
+        const newMessage: Message = { role, content, timestamp: Date.now() };
+        setMessages(prev => [...prev, newMessage]);
+    }, []);
+
+    const { status, sendTask, connect, disconnect, resolveProjectPath } = useWebSocket({
+        onMessage: handleMessage,
+    });
+
+    // Save current project state when messages or selection changes
     useEffect(() => {
-        chrome.storage.local.get(STORAGE_KEY_PROJECT_PATH).then(result => {
-            if (result[STORAGE_KEY_PROJECT_PATH]) {
-                setProjectPath(result[STORAGE_KEY_PROJECT_PATH]);
+        if (!projectPath) return;
+
+        const state: ProjectState = {
+            messages,
+            selectedSource,
+            elementInfo,
+        };
+        projectStatesRef.current.set(projectPath, state);
+
+        // Persist to chrome.storage (debounced via timeout)
+        const timeoutId = setTimeout(() => {
+            const allStates: Record<string, ProjectState> = {};
+            projectStatesRef.current.forEach((s, key) => {
+                allStates[key] = s;
+            });
+            chrome.storage.local.set({ [STORAGE_KEY_PROJECT_STATES]: allStates });
+        }, 500);
+
+        return () => clearTimeout(timeoutId);
+    }, [projectPath, messages, selectedSource, elementInfo]);
+
+    // Load project states from storage on mount
+    useEffect(() => {
+        chrome.storage.local.get(STORAGE_KEY_PROJECT_STATES).then(result => {
+            const states = result[STORAGE_KEY_PROJECT_STATES] as Record<string, ProjectState> | undefined;
+            if (states) {
+                Object.entries(states).forEach(([key, state]) => {
+                    projectStatesRef.current.set(key, state);
+                });
             }
         });
     }, []);
 
-    // Save project path to storage
+    // Restore state when project path changes
+    useEffect(() => {
+        if (!projectPath || projectPath === currentProjectRef.current) return;
+
+        currentProjectRef.current = projectPath;
+        const savedState = projectStatesRef.current.get(projectPath);
+
+        if (savedState) {
+            setMessages(savedState.messages);
+            setSelectedSource(savedState.selectedSource);
+            setElementInfo(savedState.elementInfo);
+            console.log(`[VDev] Restored state for project: ${projectPath}`);
+        } else {
+            // New project, clear state
+            setMessages([]);
+            setSelectedSource(null);
+            setElementInfo(null);
+        }
+    }, [projectPath]);
+
+    // Auto-detect project path from current tab URL
+    const detectProjectPath = useCallback(async () => {
+        if (status !== 'connected') return;
+
+        try {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (!tab?.url) return;
+
+            const port = extractPort(tab.url);
+            if (!port) {
+                // Not a localhost URL, fallback to stored path
+                chrome.storage.local.get(STORAGE_KEY_PROJECT_PATH).then(result => {
+                    if (result[STORAGE_KEY_PROJECT_PATH]) {
+                        setProjectPath(result[STORAGE_KEY_PROJECT_PATH]);
+                        setIsAutoDetected(false);
+                    }
+                });
+                return;
+            }
+
+            // Check cache first
+            const origin = new URL(tab.url).origin;
+            const cachedPath = pathCacheRef.current.get(origin);
+            if (cachedPath) {
+                setProjectPath(cachedPath);
+                setIsAutoDetected(true);
+                return;
+            }
+
+            // Resolve project path from port
+            const resolvedPath = await resolveProjectPath(port);
+            if (resolvedPath) {
+                setProjectPath(resolvedPath);
+                setIsAutoDetected(true);
+                pathCacheRef.current.set(origin, resolvedPath);
+                console.log(`[VDev] Auto-detected project path: ${resolvedPath}`);
+            }
+        } catch (error) {
+            console.error('[VDev] Error detecting project path:', error);
+        }
+    }, [status, resolveProjectPath]);
+
+    // Auto-connect on mount
+    useEffect(() => {
+        connect();
+    }, [connect]);
+
+    // Auto-detect project path when connected
+    useEffect(() => {
+        if (status === 'connected') {
+            detectProjectPath();
+        }
+    }, [status, detectProjectPath]);
+
+    // Listen for tab changes to update project path
+    useEffect(() => {
+        const handleTabActivated = () => {
+            detectProjectPath();
+        };
+
+        const handleTabUpdated = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+            if (changeInfo.url) {
+                detectProjectPath();
+            }
+        };
+
+        chrome.tabs.onActivated.addListener(handleTabActivated);
+        chrome.tabs.onUpdated.addListener(handleTabUpdated);
+
+        return () => {
+            chrome.tabs.onActivated.removeListener(handleTabActivated);
+            chrome.tabs.onUpdated.removeListener(handleTabUpdated);
+        };
+    }, [detectProjectPath]);
+
+    // Save project path to storage (only for manual changes)
     const handleProjectPathChange = useCallback((path: string) => {
         setProjectPath(path);
+        setIsAutoDetected(false);
         chrome.storage.local.set({ [STORAGE_KEY_PROJECT_PATH]: path });
     }, []);
 
@@ -73,6 +234,11 @@ const App: React.FC = () => {
         });
     }, []);
 
+    // Clear messages for current project
+    const clearMessages = useCallback(() => {
+        setMessages([]);
+    }, []);
+
     // Send instruction to Claude
     const handleSendInstruction = useCallback(async (instruction: string) => {
         if (!selectedSource || !projectPath) {
@@ -95,6 +261,7 @@ const App: React.FC = () => {
                 onDisconnect={disconnect}
                 status={status}
                 onClose={() => setShowSettings(false)}
+                isAutoDetected={isAutoDetected}
             />
         );
     }
@@ -151,3 +318,5 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+

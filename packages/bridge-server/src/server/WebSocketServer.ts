@@ -1,6 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { ClaudeCodeRunner } from '../claude/ClaudeCodeRunner';
-import type { ClientMessage, ServerMessage, StreamMessage } from '../types';
+import { resolveProjectPath, deriveProjectPathFromSource } from '../utils/ProjectUtils';
+import type { ClientMessage, ServerMessage, StreamMessage, ResolveProjectPathPayload } from '../types';
 
 /**
  * WebSocket server that bridges browser extension to Claude Code CLI
@@ -37,6 +38,9 @@ export class VDevWebSocketServer {
                     case 'GET_STATUS':
                         this.handleGetStatus(ws, message, clientId);
                         break;
+                    case 'RESOLVE_PROJECT_PATH':
+                        await this.handleResolveProjectPath(ws, message);
+                        break;
                 }
             } catch (error) {
                 console.error('[VDev Bridge] Message error:', error);
@@ -59,7 +63,12 @@ export class VDevWebSocketServer {
         message: ClientMessage,
         clientId: string
     ): Promise<void> {
-        const { source, instruction, projectPath } = message.payload!;
+        const payload = message.payload as { source: { fileName: string; lineNumber: number; columnNumber: number }; instruction: string; projectPath: string };
+        const { source, instruction, projectPath: extensionProvidedPath } = payload;
+
+        // Derive project path from source file - this is more reliable than extension-provided path
+        // because the source file path always points to the actual file location
+        const projectPath = deriveProjectPathFromSource(source.fileName) || extensionProvidedPath;
 
         console.log(`[VDev Bridge] Executing task for ${projectPath}`);
         console.log(`[VDev Bridge] Target: ${source.fileName}:${source.lineNumber}`);
@@ -139,6 +148,33 @@ export class VDevWebSocketServer {
             payload: {
                 running: runner?.isRunning() ?? false
             },
+        });
+    }
+
+    private async handleResolveProjectPath(
+        ws: WebSocket,
+        message: ClientMessage
+    ): Promise<void> {
+        const payload = message.payload as ResolveProjectPathPayload;
+        const port = payload?.port;
+
+        if (!port) {
+            this.send(ws, {
+                type: 'PROJECT_PATH_RESOLVED',
+                id: message.id,
+                payload: { projectPath: null, error: 'No port provided' },
+            });
+            return;
+        }
+
+        console.log(`[VDev Bridge] Resolving project path for port ${port}`);
+
+        const projectPath = await resolveProjectPath(port);
+
+        this.send(ws, {
+            type: 'PROJECT_PATH_RESOLVED',
+            id: message.id,
+            payload: { projectPath },
         });
     }
 

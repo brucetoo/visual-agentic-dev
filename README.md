@@ -30,7 +30,7 @@ node packages/bridge-server/bin/vdev-server.js
 
 ### 4. 在你的 React 项目中集成
 
-#### A. 运行时方案 (推荐 - 零配置，HMR 稳定)
+#### 零配置，HMR 稳定
 
 只需安装 SDK 并在 App 中引入 Provider，即可利用 React Fiber 自动获取源码位置。
 
@@ -52,41 +52,6 @@ function App() {
 }
 ```
 
-> [!TIP]
-> **为什么要用这个方案？**
-> 任何编译时插件（Babel/Vite Transform）都会干扰 React 的热更新（HMR）。运行时方案完全无侵入，性能更好，且 HMR 绝对稳定。
-
-#### B. 编译插件方案 (不到万不得已不用系列)
-
-如果你需要支持非 React 环境或有特殊定位需求，可以使用以下插件：
-
-**Vite 配置:**
-```javascript
-// vite.config.ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react-swc';
-import { vdevJsxSource } from '@visual-dev/react-devtools/vite-plugin';
-
-export default defineConfig({
-  plugins: [
-    react(),
-    vdevJsxSource()
-  ],
-  optimizeDeps: {
-    exclude: ['@visual-dev/react-devtools']
-  }
-});
-```
-
-**Webpack / Babel 配置:**
-```javascript
-// babel.config.js
-module.exports = {
-  plugins: ['@visual-dev/react-devtools/babel-plugin']
-};
-```
-
-
 ### 5. 安装 Chrome 扩展
 
 1. 打开 Chrome，访问 `chrome://extensions/`
@@ -94,15 +59,20 @@ module.exports = {
 3. 点击「加载已解压的扩展程序」
 4. 选择 `packages/extension/dist` 目录
 
-### 6. 开始使用
+### 6. 配置 Claude Code CLI
+
+最好是提前按照 iTerm（插件做了专门的适配）
+
+司内使用Claude Code CLI 可以参考这个文章配置：https://bytedance.larkoffice.com/docx/Sh6RddSBhovG1IxQjCcc0MHpnph?from=from_parent_docx
+
+### 7. 开始使用
 
 1. 启动你的 React 开发服务器
 2. 启动 Bridge Server
 3. 打开 Chrome 访问 localhost
-4. 点击扩展图标打开侧边栏
-5. 在设置中配置项目路径
-6. 点击 🔍 选择页面元素
-7. 在聊天框描述修改需求
+4. 点击扩展图标打开侧边栏（自动连接并识别项目路径）
+5. 点击 🔍 选择页面元素
+6. 在聊天框描述修改需求
 
 ## 包结构
 

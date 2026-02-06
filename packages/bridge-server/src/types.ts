@@ -5,10 +5,10 @@ export interface SourceLocation {
 }
 
 export interface ClientMessage {
-    type: 'AUTH' | 'EXECUTE_TASK' | 'CANCEL_TASK' | 'GET_STATUS';
+    type: 'AUTH' | 'EXECUTE_TASK' | 'CANCEL_TASK' | 'GET_STATUS' | 'RESOLVE_PROJECT_PATH';
     id: string;
     token?: string;
-    payload?: ExecuteTaskPayload;
+    payload?: ExecuteTaskPayload | ResolveProjectPathPayload;
 }
 
 export interface ExecuteTaskPayload {
@@ -17,8 +17,12 @@ export interface ExecuteTaskPayload {
     projectPath: string;
 }
 
+export interface ResolveProjectPathPayload {
+    port: number;
+}
+
 export interface ServerMessage {
-    type: 'AUTH_RESULT' | 'TASK_STARTED' | 'TASK_PROGRESS' | 'TASK_LOG' | 'TASK_COMPLETED' | 'TASK_ERROR';
+    type: 'AUTH_RESULT' | 'TASK_STARTED' | 'TASK_PROGRESS' | 'TASK_LOG' | 'TASK_COMPLETED' | 'TASK_ERROR' | 'PROJECT_PATH_RESOLVED';
     id: string;
     payload?: unknown;
 }

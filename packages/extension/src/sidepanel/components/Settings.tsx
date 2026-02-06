@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { STORAGE_KEY_PROJECT_PATH } from '../../shared/constants';
 import type { ConnectionStatus } from '../../shared/types';
 
@@ -9,6 +9,7 @@ interface SettingsProps {
     onDisconnect: () => void;
     status: ConnectionStatus;
     onClose: () => void;
+    isAutoDetected?: boolean;
 }
 
 export const Settings: React.FC<SettingsProps> = ({
@@ -18,8 +19,14 @@ export const Settings: React.FC<SettingsProps> = ({
     onDisconnect,
     status,
     onClose,
+    isAutoDetected = false,
 }) => {
     const [localPath, setLocalPath] = useState(projectPath);
+
+    // Sync with projectPath when it changes (e.g., from auto-detection)
+    useEffect(() => {
+        setLocalPath(projectPath);
+    }, [projectPath]);
 
     const handleSavePath = () => {
         onProjectPathChange(localPath);
@@ -37,7 +44,14 @@ export const Settings: React.FC<SettingsProps> = ({
             <div className="settings-content">
                 <div className="setting-group">
                     <label>
-                        <span className="setting-label">项目路径</span>
+                        <span className="setting-label">
+                            项目路径
+                            {isAutoDetected && (
+                                <span className="auto-badge" title="从localhost端口自动检测">
+                                    🎯 自动识别
+                                </span>
+                            )}
+                        </span>
                         <span className="setting-hint">React 项目的绝对路径</span>
                     </label>
                     <div className="setting-input-row">
@@ -74,8 +88,7 @@ export const Settings: React.FC<SettingsProps> = ({
                     <h3>使用说明</h3>
                     <ol>
                         <li>在终端运行 <code>vdev-server</code> 启动服务</li>
-                        <li>设置你的 React 项目路径</li>
-                        <li>连接服务器</li>
+                        <li>打开 localhost 项目，路径会自动识别</li>
                         <li>回到主界面，选择页面元素</li>
                         <li>描述想要的修改</li>
                     </ol>
@@ -84,3 +97,4 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
     );
 };
+

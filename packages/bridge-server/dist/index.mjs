@@ -219,6 +219,70 @@ var ClaudeCodeRunner = class {
   }
 };
 
+// src/utils/ProjectUtils.ts
+import { exec as exec2 } from "child_process";
+import { promisify as promisify2 } from "util";
+import * as path from "path";
+import * as fs from "fs";
+var execAsync2 = promisify2(exec2);
+async function resolveProjectPath(port) {
+  try {
+    const { stdout: lsofOutput } = await execAsync2(
+      `lsof -i :${port} -P -n | grep LISTEN | awk '{print $2}' | head -1`
+    );
+    const pid = lsofOutput.trim();
+    if (!pid) {
+      console.log(`[ProjectUtils] No process found listening on port ${port}`);
+      return null;
+    }
+    console.log(`[ProjectUtils] Found PID ${pid} for port ${port}`);
+    const { stdout: cwdOutput } = await execAsync2(
+      `lsof -p ${pid} | grep cwd | awk '{print $NF}'`
+    );
+    const cwd = cwdOutput.trim();
+    if (!cwd) {
+      console.log(`[ProjectUtils] Could not determine CWD for PID ${pid}`);
+      return null;
+    }
+    console.log(`[ProjectUtils] Process CWD: ${cwd}`);
+    const projectRoot = findProjectRoot(cwd);
+    if (projectRoot) {
+      console.log(`[ProjectUtils] Resolved project root: ${projectRoot}`);
+    } else {
+      console.log(`[ProjectUtils] Could not find project root from ${cwd}`);
+    }
+    return projectRoot;
+  } catch (error) {
+    console.error("[ProjectUtils] Error resolving project path:", error);
+    return null;
+  }
+}
+function deriveProjectPathFromSource(sourceFilePath) {
+  if (!sourceFilePath || !path.isAbsolute(sourceFilePath)) {
+    console.log(`[ProjectUtils] Invalid source file path: ${sourceFilePath}`);
+    return null;
+  }
+  const dir = path.dirname(sourceFilePath);
+  const projectRoot = findProjectRoot(dir);
+  if (projectRoot) {
+    console.log(`[ProjectUtils] Derived project root from source: ${projectRoot}`);
+  } else {
+    console.log(`[ProjectUtils] Could not derive project root from source: ${sourceFilePath}`);
+  }
+  return projectRoot;
+}
+function findProjectRoot(startPath) {
+  let currentPath = startPath;
+  while (currentPath !== "/") {
+    const packageJsonPath = path.join(currentPath, "package.json");
+    if (fs.existsSync(packageJsonPath)) {
+      return currentPath;
+    }
+    currentPath = path.dirname(currentPath);
+  }
+  return null;
+}
+
 // src/server/WebSocketServer.ts
 var VDevWebSocketServer = class {
   constructor(port = 9527) {
@@ -243,6 +307,9 @@ var VDevWebSocketServer = class {
           case "GET_STATUS":
             this.handleGetStatus(ws, message, clientId);
             break;
+          case "RESOLVE_PROJECT_PATH":
+            await this.handleResolveProjectPath(ws, message);
+            break;
         }
       } catch (error) {
         console.error("[VDev Bridge] Message error:", error);
@@ -258,7 +325,9 @@ var VDevWebSocketServer = class {
     });
   }
   async handleExecuteTask(ws, message, clientId) {
-    const { source, instruction, projectPath } = message.payload;
+    const payload = message.payload;
+    const { source, instruction, projectPath: extensionProvidedPath } = payload;
+    const projectPath = deriveProjectPathFromSource(source.fileName) || extensionProvidedPath;
     console.log(`[VDev Bridge] Executing task for ${projectPath}`);
     console.log(`[VDev Bridge] Target: ${source.fileName}:${source.lineNumber}`);
     console.log(`[VDev Bridge] Instruction: ${instruction.slice(0, 100)}...`);
@@ -321,6 +390,25 @@ var VDevWebSocketServer = class {
       payload: {
         running: runner?.isRunning() ?? false
       }
+    });
+  }
+  async handleResolveProjectPath(ws, message) {
+    const payload = message.payload;
+    const port = payload?.port;
+    if (!port) {
+      this.send(ws, {
+        type: "PROJECT_PATH_RESOLVED",
+        id: message.id,
+        payload: { projectPath: null, error: "No port provided" }
+      });
+      return;
+    }
+    console.log(`[VDev Bridge] Resolving project path for port ${port}`);
+    const projectPath = await resolveProjectPath(port);
+    this.send(ws, {
+      type: "PROJECT_PATH_RESOLVED",
+      id: message.id,
+      payload: { projectPath }
     });
   }
   send(ws, message) {

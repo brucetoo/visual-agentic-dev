@@ -23,3 +23,7 @@ export interface TaskPayload {
     instruction: string;
     projectPath: string;
 }
+
+export interface ResolveProjectPathPayload {
+    port: number;
+}
