@@ -18,8 +18,8 @@ Visual Dev Tool 是一个可视化开发工具，允许开发者在浏览器中�
 │  │  │   + Overlays     │  │    │  │  ┌─────┐ ┌──────────────┐  │  │ │
 │  │  └────────┬─────────┘  │    │  │  │ 🔍  │ │  Chat Panel  │  │  │ │
 │  │           │            │    │  │  └──┬──┘ └──────┬───────┘  │  │ │
-│  │  data-vdev-source      │    │  │     │          │           │  │ │
-│  │  (Babel Plugin)        │    │  └─────┼──────────┼───────────┘  │ │
+│  │    React Fiber         │    │  │     │          │           │  │ │
+│  │    (_debugSource)      │    │  └─────┼──────────┼───────────┘  │ │
 │  └───────────┬────────────┘    │        │          │              │ │
 │              │                 │  ┌─────┴──────────┴───────────┐  │ │
 │              │ postMessage     │  │     Content Script         │  │ │
@@ -60,8 +60,10 @@ Visual Dev Tool 是一个可视化开发工具，允许开发者在浏览器中�
 ```
 packages/react-devtools/
 ├── src/
+│   ├── vite-plugin/
+│   │   └── jsx-source.ts      # Vite 插件 (可选，用于生产或其他构建环境)
 │   ├── babel-plugin/
-│   │   └── jsx-source.ts      # Babel 插件：注入 data-vdev-source
+│   │   └── jsx-source.ts      # Babel 插件 (可选，用于 Webpack/Rsbuild)
 │   ├── components/
 │   │   └── DevToolsProvider.tsx  # 主组件：检查模式 + 事件处理
 │   ├── overlay/
@@ -78,21 +80,21 @@ packages/react-devtools/
 
 ```mermaid
 sequenceDiagram
-    participant Babel as Babel Plugin
+    participant Fiber as React Fiber
     participant App as React App
     participant Provider as DevToolsProvider
     participant Ext as Chrome Extension
 
-    Note over Babel: 编译阶段
-    Babel->>App: 注入 data-vdev-source 属性
+    Note over Fiber: 开发模式
+    Fiber->>App: 自动关联 _debugSource
 
     Note over Provider: 运行阶段
     Ext->>Provider: VDEV_START_INSPECT
     Provider->>Provider: 启用检查模式
     
     Note over Provider: 用户操作
-    Provider->>Provider: mousemove → 显示 Highlighter
-    Provider->>Provider: click → 显示 SelectionBox
+    Provider->>Provider: mousemove → 查找 Fiber 节点
+    Provider->>Provider: click → 获取 _debugSource
     Provider->>Ext: VDEV_ELEMENT_SELECTED (源码位置)
 ```
 
@@ -165,7 +167,8 @@ packages/extension/
 ```mermaid
 flowchart LR
     subgraph Browser["浏览器"]
-        A[React App] -->|data-vdev-source| B[DevToolsProvider]
+        A[React App] -->|React Fiber| B[DevToolsProvider]
+        A -.->|data-vdev-source| B
         B -->|postMessage| C[Content Script]
         C -->|chrome.runtime| D[Side Panel]
     end
@@ -219,7 +222,8 @@ sequenceDiagram
 |------|------|
 | 构建工具 | pnpm workspace + Turbo |
 | React SDK | React 18 + TypeScript + tsup |
-| 编译插件 | Babel 7 |
+| 源码定位 | **React Fiber _debugSource (运行时)** |
+| 编译插件 | Vite 插件 / Babel 7 (备选) |
 | Bridge Server | Node.js + ws |
 | Chrome Extension | Vite + React + Manifest V3 |
 | AI 后端 | Claude Code CLI (ccr 代理) |
@@ -229,9 +233,13 @@ sequenceDiagram
 ## 关键设计决策
 
 ### 1. 源码定位方式
-- **选择**: Babel 编译时注入 `data-vdev-source` 属性
-- **原因**: 简单可靠，支持所有 JSX 元素
-- **权衡**: 需要修改构建配置，不支持动态生成的元素
+- **选择**: **运行时 React Fiber 遍历 (首选)**
+- **原因**: 彻底解决编译时插件干扰 React Fast Refresh 导致的 HMR 不稳定问题。
+- **解决的问题**: 
+    - 解决了 HMR (热更新) 间歇性失效的问题。
+    - 解决了由于导出非组件对象导致的页面全量刷新问题。
+    - 简化了配置，开发者无需修改繁琐的构建配置即可使用。
+- **回退方案**: 依然支持 `data-vdev-*` 属性注入，以保证在非 React 或特殊构建环境下的兼容性。
 
 ### 2. 通信架构
 - **SDK ↔ Extension**: `window.postMessage` (同页面)

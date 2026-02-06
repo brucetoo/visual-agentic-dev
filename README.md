@@ -2,7 +2,10 @@
 
 一个可视化开发工具，让开发者在浏览器中点击 React 元素，通过侧边栏对话描述需求，由 Claude Code CLI 自动执行代码修改。
 
-## 快速开始
+## 示例
+![alt text](image.png)
+
+## 本地快速开始
 
 ### 1. 安装依赖
 
@@ -27,70 +30,13 @@ node packages/bridge-server/bin/vdev-server.js
 
 ### 4. 在你的 React 项目中集成
 
+#### A. 运行时方案 (推荐 - 零配置，HMR 稳定)
+
+只需安装 SDK 并在 App 中引入 Provider，即可利用 React Fiber 自动获取源码位置。
+
 ```bash
 # 在你的 React 项目中
 npm install /path/to/visual-dev-tool/packages/react-devtools
-```
-
-**Webpack 配置:**
-```javascript
-// webpack.config.js
-module.exports = {
-  module: {
-    rules: [
-      {
-        test: /\.(js|jsx|ts|tsx)$/,
-        exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: ['@babel/preset-react'],
-            plugins: ['@visual-dev/react-devtools/babel-plugin']
-          }
-        }
-      }
-    ]
-  }
-};
-```
-
-**Rsbuild 配置:**
-```javascript
-// rsbuild.config.ts
-import { defineConfig } from '@rsbuild/core';
-import { pluginReact } from '@rsbuild/plugin-react';
-
-export default defineConfig({
-  plugins: [
-    pluginReact({
-      swcReactOptions: {
-        // Rsbuild 默认使用 SWC，需要切换到 Babel
-      }
-    })
-  ],
-  tools: {
-    babel: {
-      plugins: ['@visual-dev/react-devtools/babel-plugin']
-    }
-  }
-});
-```
-
-**Vite 配置:**
-```javascript
-// vite.config.ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig({
-  plugins: [
-    react({
-      babel: {
-        plugins: ['@visual-dev/react-devtools/babel-plugin']
-      }
-    })
-  ]
-});
 ```
 
 ```tsx
@@ -106,6 +52,41 @@ function App() {
 }
 ```
 
+> [!TIP]
+> **为什么要用这个方案？**
+> 任何编译时插件（Babel/Vite Transform）都会干扰 React 的热更新（HMR）。运行时方案完全无侵入，性能更好，且 HMR 绝对稳定。
+
+#### B. 编译插件方案 (不到万不得已不用系列)
+
+如果你需要支持非 React 环境或有特殊定位需求，可以使用以下插件：
+
+**Vite 配置:**
+```javascript
+// vite.config.ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react-swc';
+import { vdevJsxSource } from '@visual-dev/react-devtools/vite-plugin';
+
+export default defineConfig({
+  plugins: [
+    react(),
+    vdevJsxSource()
+  ],
+  optimizeDeps: {
+    exclude: ['@visual-dev/react-devtools']
+  }
+});
+```
+
+**Webpack / Babel 配置:**
+```javascript
+// babel.config.js
+module.exports = {
+  plugins: ['@visual-dev/react-devtools/babel-plugin']
+};
+```
+
+
 ### 5. 安装 Chrome 扩展
 
 1. 打开 Chrome，访问 `chrome://extensions/`
@@ -119,16 +100,16 @@ function App() {
 2. 启动 Bridge Server
 3. 打开 Chrome 访问 localhost
 4. 点击扩展图标打开侧边栏
-5. 在设置中配置 Token 和项目路径
+5. 在设置中配置项目路径
 6. 点击 🔍 选择页面元素
 7. 在聊天框描述修改需求
 
 ## 包结构
 
-- `@visual-dev/react-devtools` - React SDK (Babel 插件 + DevToolsProvider)
+- `@visual-dev/react-devtools` - React SDK (运行时定位 + 可选插件)
 - `@visual-dev/bridge-server` - WebSocket 服务器 (连接浏览器和 Claude CLI)
 - `visual-dev-extension` - Chrome 扩展 (侧边栏 UI)
 
 ## License
 
-MIT
+Bruce Too

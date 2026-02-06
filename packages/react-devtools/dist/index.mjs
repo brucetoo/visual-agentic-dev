@@ -54,6 +54,36 @@ var Highlighter = ({
 import { useEffect as useEffect2, useState as useState2 } from "react";
 
 // src/utils/sourceLocator.ts
+function getReactFiber(element) {
+  const key = Object.keys(element).find(
+    (k) => k.startsWith("__reactFiber$") || k.startsWith("__reactInternalInstance$")
+  );
+  return key ? element[key] : null;
+}
+function findFiberWithSource(fiber) {
+  let current = fiber;
+  while (current) {
+    if (current._debugSource) {
+      return current;
+    }
+    current = current.return;
+  }
+  return null;
+}
+function getSourceFromFiber(element) {
+  const fiber = getReactFiber(element);
+  if (!fiber) return null;
+  const fiberWithSource = findFiberWithSource(fiber);
+  if (fiberWithSource?._debugSource) {
+    const { fileName, lineNumber, columnNumber } = fiberWithSource._debugSource;
+    return {
+      fileName,
+      lineNumber,
+      columnNumber: columnNumber || 1
+    };
+  }
+  return null;
+}
 function parseSourceAttr(attrValue) {
   if (!attrValue) return null;
   try {
@@ -66,9 +96,20 @@ function parseSourceAttr(attrValue) {
   return null;
 }
 function findSourceElement(target, prefix = "vdev") {
+  let current = target;
+  while (current && current !== document.body) {
+    if (getSourceFromFiber(current)) {
+      return current;
+    }
+    current = current.parentElement;
+  }
   return target.closest(`[data-${prefix}-file], [data-${prefix}-source]`);
 }
 function getSourceFromElement(element, prefix = "vdev") {
+  const fiberSource = getSourceFromFiber(element);
+  if (fiberSource) {
+    return fiberSource;
+  }
   const fileName = element.getAttribute(`data-${prefix}-file`);
   const lineStr = element.getAttribute(`data-${prefix}-line`);
   const colStr = element.getAttribute(`data-${prefix}-col`);

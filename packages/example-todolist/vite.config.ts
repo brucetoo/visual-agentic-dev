@@ -1,23 +1,16 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import react from '@vitejs/plugin-react-swc';
 
 export default defineConfig({
-    plugins: [
-        react({
-            babel: {
-                plugins: ['@visual-dev/react-devtools/babel-plugin']
-            }
-        })
-    ],
+    plugins: [react()],
     server: {
         port: 3000,
-        hmr: {
-            // Ensure HMR uses WebSocket
-            protocol: 'ws',
-            // Show overlay for errors
-            overlay: true
+        watch: {
+            usePolling: true,
+            interval: 100
         }
+    },
+    optimizeDeps: {
+        exclude: ['@visual-dev/react-devtools']
     }
 });
-
-

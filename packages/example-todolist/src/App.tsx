@@ -3,13 +3,8 @@ import { DevToolsProvider } from '@visual-dev/react-devtools';
 import { TodoList } from './components/TodoList';
 import { AddTodo } from './components/AddTodo';
 import { Header } from './components/Header';
+import type { Todo } from './types';
 import './App.css';
-
-export interface Todo {
-    id: number;
-    text: string;
-    completed: boolean;
-}
 
 function App() {
     const [todos, setTodos] = useState<Todo[]>([
@@ -33,7 +28,7 @@ function App() {
     };
 
     const invertAllTodos = () => {
-        setTodos(todos.map(todo => ({ ...todo, completed: !todo.completed })));
+        setTodos(todos.filter(todo => !todo.completed));
     };
 
     return (
