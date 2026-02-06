@@ -67,6 +67,24 @@ export const DevToolsProvider: React.FC<DevToolsProviderProps> = ({
                 console.log('[DevTools] Stopping inspection');
                 setInspecting(false);
                 setHoveredElement(null);
+            } else if (message.type === 'VDEV_TOGGLE_INSPECT') {
+                console.log('[DevTools] Toggling inspection');
+                setInspecting(prev => {
+                    const newState = !prev;
+                    if (newState) {
+                        // Starting inspection, clear selection
+                        clearSelection();
+                    } else {
+                        // Stopping inspection, clear hovered
+                        setHoveredElement(null);
+                    }
+                    // Notify extension of state change
+                    sendToExtension({
+                        type: 'VDEV_INSPECT_STATE_CHANGED',
+                        payload: { isInspecting: newState }
+                    });
+                    return newState;
+                });
             } else if (message.type === 'VDEV_CLEAR_SELECTION') {
                 clearSelection();
             }

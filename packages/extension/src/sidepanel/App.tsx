@@ -16,6 +16,16 @@ interface ProjectState {
     elementInfo: ElementInfo | null;
 }
 
+// Check if URL is localhost
+function isLocalhostUrl(url: string): boolean {
+    try {
+        const urlObj = new URL(url);
+        return urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1';
+    } catch {
+        return false;
+    }
+}
+
 // Extract port from URL (e.g., http://localhost:3000 -> 3000)
 function extractPort(url: string): number | null {
     try {
@@ -37,6 +47,7 @@ const App: React.FC = () => {
     const [showSettings, setShowSettings] = useState(false);
     const [isAutoDetected, setIsAutoDetected] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
+    const [isLocalhost, setIsLocalhost] = useState<boolean | null>(null); // null = loading, true/false = determined
 
     // Ref for project states to avoid stale closure issues
     const projectStatesRef = useRef<Map<string, ProjectState>>(new Map());
@@ -133,6 +144,23 @@ const App: React.FC = () => {
         }, 100);
     }, [projectPath]);
 
+    // Check current tab and update isLocalhost state
+    const checkCurrentTab = useCallback(async () => {
+        try {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (!tab?.url) {
+                setIsLocalhost(false);
+                return;
+            }
+            const isLocal = isLocalhostUrl(tab.url);
+            setIsLocalhost(isLocal);
+            console.log(`[VDev] Current tab is localhost: ${isLocal}, URL: ${tab.url}`);
+        } catch (error) {
+            console.error('[VDev] Error checking current tab:', error);
+            setIsLocalhost(false);
+        }
+    }, []);
+
     // Auto-detect project path from current tab URL
     const detectProjectPath = useCallback(async () => {
         if (status !== 'connected') return;
@@ -141,15 +169,13 @@ const App: React.FC = () => {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (!tab?.url) return;
 
+            // Update isLocalhost state
+            const isLocal = isLocalhostUrl(tab.url);
+            setIsLocalhost(isLocal);
+
             const port = extractPort(tab.url);
             if (!port) {
-                // Not a localhost URL, fallback to stored path
-                chrome.storage.local.get(STORAGE_KEY_PROJECT_PATH).then(result => {
-                    if (result[STORAGE_KEY_PROJECT_PATH]) {
-                        setProjectPath(result[STORAGE_KEY_PROJECT_PATH]);
-                        setIsAutoDetected(false);
-                    }
-                });
+                // Not a localhost URL, don't try to detect path
                 return;
             }
 
@@ -175,6 +201,11 @@ const App: React.FC = () => {
         }
     }, [status, resolveProjectPath]);
 
+    // Check current tab on mount
+    useEffect(() => {
+        checkCurrentTab();
+    }, [checkCurrentTab]);
+
     // Auto-connect on mount
     useEffect(() => {
         connect();
@@ -187,15 +218,21 @@ const App: React.FC = () => {
         }
     }, [status, detectProjectPath]);
 
-    // Listen for tab changes to update project path
+    // Listen for tab changes to update project path and isLocalhost
     useEffect(() => {
         const handleTabActivated = () => {
-            detectProjectPath();
+            checkCurrentTab();
+            if (status === 'connected') {
+                detectProjectPath();
+            }
         };
 
         const handleTabUpdated = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
             if (changeInfo.url) {
-                detectProjectPath();
+                checkCurrentTab();
+                if (status === 'connected') {
+                    detectProjectPath();
+                }
             }
         };
 
@@ -206,7 +243,7 @@ const App: React.FC = () => {
             chrome.tabs.onActivated.removeListener(handleTabActivated);
             chrome.tabs.onUpdated.removeListener(handleTabUpdated);
         };
-    }, [detectProjectPath]);
+    }, [checkCurrentTab, detectProjectPath, status]);
 
     // Save project path to storage (only for manual changes)
     const handleProjectPathChange = useCallback((path: string) => {
@@ -217,13 +254,17 @@ const App: React.FC = () => {
 
     // Listen for element selection from page
     useEffect(() => {
-        const handler = (message: { type: string; payload?: { source: SourceLocation; elementInfo: ElementInfo } }) => {
+        const handler = (message: { type: string; payload?: { source: SourceLocation; elementInfo: ElementInfo; isInspecting?: boolean } }) => {
             if (message.type === 'VDEV_ELEMENT_SELECTED' && message.payload) {
                 setSelectedSource(message.payload.source);
                 setElementInfo(message.payload.elementInfo);
                 setIsInspecting(false);
             } else if (message.type === 'VDEV_SDK_READY') {
                 console.log('[VDev SidePanel] SDK ready');
+            } else if (message.type === 'VDEV_INSPECT_STATE_CHANGED' && message.payload) {
+                // Sync inspect state when SDK toggles via keyboard shortcut
+                console.log('[VDev SidePanel] Inspect state changed:', message.payload.isInspecting);
+                setIsInspecting(!!message.payload.isInspecting);
             }
         };
 
@@ -286,6 +327,35 @@ const App: React.FC = () => {
                 onClose={() => setShowSettings(false)}
                 isAutoDetected={isAutoDetected}
             />
+        );
+    }
+
+    // Show loading state while checking tab
+    if (isLocalhost === null) {
+        return (
+            <div className="vdev-sidepanel vdev-not-supported">
+                <div className="not-supported-content">
+                    <div className="not-supported-icon">⏳</div>
+                    <p>检测页面类型中...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Show fallback UI for non-localhost pages
+    if (!isLocalhost) {
+        return (
+            <div className="vdev-sidepanel vdev-not-supported">
+                <header className="vdev-header">
+                    <h1>🎨 Visual Dev</h1>
+                </header>
+                <div className="not-supported-content">
+                    <div className="not-supported-icon">🚫</div>
+                    <h2>不支持线上页面</h2>
+                    <p>Visual Dev 仅支持本地开发服务器</p>
+                    <p className="hint">请打开 localhost 或 127.0.0.1 页面使用</p>
+                </div>
+            </div>
         );
     }
 

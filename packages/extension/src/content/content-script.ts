@@ -18,7 +18,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (
         message.type === 'VDEV_START_INSPECT' ||
         message.type === 'VDEV_STOP_INSPECT' ||
-        message.type === 'VDEV_CLEAR_SELECTION'
+        message.type === 'VDEV_CLEAR_SELECTION' ||
+        message.type === 'VDEV_TOGGLE_INSPECT'
     ) {
         window.postMessage(message, '*');
     }

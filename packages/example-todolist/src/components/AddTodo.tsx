@@ -34,7 +34,7 @@ export function AddTodo({ onAdd, onInvertAll }: AddTodoProps) {
                 style={{ marginLeft: 8 }}
                 onClick={onInvertAll}
             >
-                取消
+                取消2
             </button>
         </form>
     );
