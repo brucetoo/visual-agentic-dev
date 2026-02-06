@@ -1,0 +1,30 @@
+
+
+> @visual-dev/bridge-server@1.0.0 build /Users/bytedance/work/visual-dev-tool/packages/bridge-server
+> tsup
+
+[34mCLI[39m Building entry: src/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.1
+[34mCLI[39m Using tsup config: /Users/bytedance/work/visual-dev-tool/packages/bridge-server/tsup.config.ts
+[34mCLI[39m Target: node18
+[34mCLI[39m Cleaning output folder
+[34mCJS[39m Build start
+[34mESM[39m Build start
+[32mCJS[39m [1mdist/index.js     [22m[32m12.30 KB[39m
+[32mCJS[39m [1mdist/index.js.map [22m[32m21.75 KB[39m
+[32mCJS[39m ⚡️ Build success in 65ms
+[32mESM[39m [1mdist/index.mjs     [22m[32m11.45 KB[39m
+[32mESM[39m [1mdist/index.mjs.map [22m[32m21.72 KB[39m
+[32mESM[39m ⚡️ Build success in 66ms
+DTS Build start
+src/server/WebSocketServer.ts(82,17): error TS2353: Object literal may only specify known properties, and 'onProgress' does not exist in type 'ExecuteOptions'.
+
+[31mError: error occurred in dts build
+    at Worker.<anonymous> (/Users/bytedance/work/visual-dev-tool/node_modules/.pnpm/tsup@8.5.1_typescript@5.9.3/node_modules/tsup/dist/index.js:1545:26)
+    at Worker.emit (node:events:518:28)
+    at MessagePort.<anonymous> (node:internal/worker:268:53)
+    at [nodejs.internal.kHybridDispatch] (node:internal/event_target:827:20)
+    at MessagePort.<anonymous> (node:internal/per_context/messageport:23:28)[39m
+DTS Build error
+[41m[30m ELIFECYCLE [39m[49m [31mCommand failed with exit code 1.[39m

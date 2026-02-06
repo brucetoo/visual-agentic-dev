@@ -1,0 +1,154 @@
+.app {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+}
+
+/* Header */
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    text-align: center;
+}
+
+.title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+/* Main */
+.main {
+    padding: 24px;
+}
+
+/* Add Todo */
+.add-todo {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.add-todo-input {
+    flex: 1;
+    padding: 14px 18px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 16px;
+    transition: all 0.2s;
+}
+
+.add-todo-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.add-todo-button {
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.add-todo-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Todo List */
+.todo-list {
+    list-style: none;
+}
+
+.todo-empty {
+    text-align: center;
+    padding: 40px;
+    color: #718096;
+    font-size: 18px;
+}
+
+/* Todo Item */
+.todo-item {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    background: #f7fafc;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    transition: all 0.2s;
+}
+
+.todo-item:hover {
+    background: #edf2f7;
+    transform: translateX(4px);
+}
+
+.todo-item.completed {
+    opacity: 0.6;
+}
+
+.todo-item.completed .todo-text {
+    text-decoration: line-through;
+    color: #a0aec0;
+}
+
+.todo-label {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    cursor: pointer;
+    gap: 14px;
+}
+
+.todo-checkbox {
+    width: 22px;
+    height: 22px;
+    accent-color: #667eea;
+    cursor: pointer;
+}
+
+.todo-text {
+    font-size: 16px;
+    color: #2d3748;
+}
+
+.todo-delete {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: all 0.2s;
+    padding: 4px 8px;
+}
+
+.todo-delete:hover {
+    opacity: 1;
+    transform: scale(1.2);
+}
+
+/* Footer */
+.footer {
+    background: #f7fafc;
+    padding: 20px;
+    text-align: center;
+    border-top: 1px solid #e2e8f0;
+}
+
+.footer p {
+    font-size: 14px;
+    color: #718096;
+}

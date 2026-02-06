@@ -1,0 +1,41 @@
+{
+    "name": "@visual-dev/bridge-server",
+    "version": "1.0.0",
+    "description": "Bridge server for Visual Dev Tool - connects browser extension to Claude Code CLI",
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "bin": {
+        "vdev-server": "./bin/vdev-server.js"
+    },
+    "files": [
+        "dist",
+        "bin"
+    ],
+    "scripts": {
+        "dev": "tsup --watch",
+        "build": "tsup",
+        "start": "node bin/vdev-server.js",
+        "lint": "eslint src --ext .ts",
+        "clean": "rm -rf dist"
+    },
+    "dependencies": {
+        "ws": "^8.16.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.0",
+        "@types/ws": "^8.5.10",
+        "tsup": "^8.0.0",
+        "typescript": "^5.3.0"
+    },
+    "engines": {
+        "node": ">=18"
+    },
+    "keywords": [
+        "visual-dev",
+        "bridge-server",
+        "claude-code",
+        "websocket"
+    ],
+    "license": "MIT"
+}

@@ -1,0 +1,1 @@
+chrome.action.onClicked.addListener(e=>{e.id&&chrome.sidePanel.open({tabId:e.id})});chrome.runtime.onMessage.addListener((e,n,d)=>((e.type==="VDEV_ELEMENT_SELECTED"||e.type==="VDEV_SDK_READY")&&chrome.runtime.sendMessage(e),!0));chrome.runtime.onInstalled.addListener(()=>{console.log("[VDev Extension] Installed")});
