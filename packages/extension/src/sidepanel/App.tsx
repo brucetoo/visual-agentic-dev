@@ -55,9 +55,15 @@ const App: React.FC = () => {
         onMessage: handleMessage,
     });
 
+    // Flag to skip saving during restore
+    const isRestoringRef = useRef(false);
+
     // Save current project state when messages or selection changes
     useEffect(() => {
-        if (!projectPath) return;
+        // Don't save if we're currently restoring state
+        if (!projectPath || isRestoringRef.current) return;
+        // Don't save if projectPath doesn't match current project (just switched)
+        if (projectPath !== currentProjectRef.current) return;
 
         const state: ProjectState = {
             messages,
@@ -94,6 +100,17 @@ const App: React.FC = () => {
     useEffect(() => {
         if (!projectPath || projectPath === currentProjectRef.current) return;
 
+        // Save current project state before switching (if there was a previous project)
+        if (currentProjectRef.current) {
+            const prevState: ProjectState = {
+                messages,
+                selectedSource,
+                elementInfo,
+            };
+            projectStatesRef.current.set(currentProjectRef.current, prevState);
+        }
+
+        isRestoringRef.current = true;
         currentProjectRef.current = projectPath;
         const savedState = projectStatesRef.current.get(projectPath);
 
@@ -107,7 +124,13 @@ const App: React.FC = () => {
             setMessages([]);
             setSelectedSource(null);
             setElementInfo(null);
+            console.log(`[VDev] New project, cleared state: ${projectPath}`);
         }
+
+        // Re-enable saving after a short delay
+        setTimeout(() => {
+            isRestoringRef.current = false;
+        }, 100);
     }, [projectPath]);
 
     // Auto-detect project path from current tab URL

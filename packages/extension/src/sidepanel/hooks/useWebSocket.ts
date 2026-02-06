@@ -69,7 +69,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
                     break;
 
                 case 'TASK_COMPLETED':
-                    addMessage('system', '✅ 指令已发送到 iTerm, 打开移步操作');
+                    addMessage('system', '✅ 指令已发送到 iTerm, 请移步查看进度...');
                     break;
 
                 case 'TASK_ERROR':
