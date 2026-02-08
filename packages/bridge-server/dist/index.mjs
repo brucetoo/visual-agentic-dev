@@ -30,42 +30,6 @@ ${instruction}
   }
 };
 
-// src/claude/ClaudeCodeRunner.ts
-var ClaudeCodeRunner = class {
-  async execute(options) {
-    const { projectPath, source, instruction, onLog, terminalManager, sessionId } = options;
-    const prompt = PromptBuilder.build({ source, instruction });
-    try {
-      onLog?.(`[ClaudeRunner] Using session: ${sessionId}`);
-      const session = await terminalManager.getOrCreateSession(
-        sessionId,
-        projectPath,
-        false
-        // Default to safe mode unless otherwise specified? Or maybe we can detect?
-        // Actually, if the session exists, this arg is ignored. If new, it matters.
-        // For now, let's assume the user opens the terminal first or we default to safe.
-      );
-      onLog?.("[ClaudeRunner] Sending instruction to terminal...");
-      terminalManager.sendData(sessionId, `
-${prompt}
-`);
-      return {
-        success: true,
-        filesModified: [],
-        messages: []
-      };
-    } catch (error) {
-      onLog?.(`[ClaudeRunner] Error: ${error.message}`);
-      throw error;
-    }
-  }
-  cancel() {
-  }
-  isRunning() {
-    return false;
-  }
-};
-
 // src/utils/ProjectUtils.ts
 import { exec } from "child_process";
 import { promisify } from "util";
@@ -133,6 +97,8 @@ function findProjectRoot(startPath) {
 // src/utils/TerminalManager.ts
 import * as pty from "node-pty";
 import * as os from "os";
+import { Terminal } from "@xterm/headless";
+import { SerializeAddon } from "@xterm/addon-serialize";
 
 // src/utils/ToolManager.ts
 import { execSync } from "child_process";
@@ -197,9 +163,9 @@ var shell = os.platform() === "win32" ? "powershell.exe" : process.env.SHELL || 
 var TerminalManager = class {
   constructor() {
     this.sessions = /* @__PURE__ */ new Map();
-    // Persist history for Normal mode sessions by ID
-    this.normalModeHistory = /* @__PURE__ */ new Map();
-    this.MAX_HISTORY_LINES = 1e3;
+    // Persist serialized state for sessions by ID
+    this.persistedState = /* @__PURE__ */ new Map();
+    this.READINESS_BUFFER_SIZE = 50;
     this._onReady = () => {
     };
   }
@@ -210,9 +176,10 @@ var TerminalManager = class {
   clearHistory(id) {
     const session = this.sessions.get(id);
     if (session) {
-      session.history = [];
+      session.headless.reset();
+      session.historyBuffer = [];
     }
-    this.normalModeHistory.set(id, []);
+    this.persistedState.delete(id);
   }
   isSessionReady(id) {
     return this.sessions.get(id)?.isReady || false;
@@ -235,15 +202,19 @@ var TerminalManager = class {
         cwd,
         env: { ...process.env }
       });
-      let historyArray = [];
-      if (!this.normalModeHistory.has(id)) {
-        this.normalModeHistory.set(id, []);
+      const headless = new Terminal({
+        allowProposedApi: true,
+        cols: 80,
+        rows: 24,
+        scrollback: 1e3
+      });
+      const serializer = new SerializeAddon();
+      headless.loadAddon(serializer);
+      const savedState = this.persistedState.get(id);
+      if (savedState) {
+        headless.write(savedState);
       }
-      historyArray = this.normalModeHistory.get(id);
-      if (!this.normalModeHistory.has(id)) {
-        this.normalModeHistory.set(id, []);
-      }
-      historyArray = this.normalModeHistory.get(id);
+      let historyBuffer = [];
       const readyMarkers = [
         "Welcome back",
         "Visual Dev",
@@ -260,19 +231,21 @@ var TerminalManager = class {
       ];
       sessionWrapper = {
         pty: ptyProcess,
-        history: historyArray,
+        headless,
+        serializer,
         useYolo,
-        isReady: false
+        isReady: false,
+        historyBuffer
       };
       ptyProcess.onData((data) => {
         if (sessionWrapper) {
-          sessionWrapper.history.push(data);
-          if (sessionWrapper.history.length > this.MAX_HISTORY_LINES) {
-            sessionWrapper.history.shift();
+          sessionWrapper.headless.write(data);
+          sessionWrapper.historyBuffer.push(data);
+          if (sessionWrapper.historyBuffer.length > this.READINESS_BUFFER_SIZE) {
+            sessionWrapper.historyBuffer.shift();
           }
           if (!sessionWrapper.isReady) {
             const cleanData = data.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "");
-            console.log(`[TerminalManager] Chunk: ${JSON.stringify(data.substring(0, 50))}... Clean: ${JSON.stringify(cleanData.substring(0, 50))}...`);
             const hasMarker = readyMarkers.some((marker) => cleanData.includes(marker) || data.includes(marker));
             if (hasMarker) {
               sessionWrapper.isReady = true;
@@ -307,6 +280,7 @@ var TerminalManager = class {
     if (session) {
       try {
         session.pty.resize(cols, rows);
+        session.headless.resize(cols, rows);
       } catch (e) {
         console.error("[TerminalManager] Resize error:", e);
       }
@@ -316,6 +290,8 @@ var TerminalManager = class {
     const session = this.sessions.get(id);
     if (session) {
       const pid = session.pty.pid;
+      this.persistedState.set(id, session.serializer.serialize());
+      session.headless.dispose();
       this.sessions.delete(id);
       try {
         if (os.platform() !== "win32") {
@@ -338,22 +314,18 @@ var TerminalManager = class {
   getHistory(id) {
     const session = this.sessions.get(id);
     if (session) {
-      return session.history.join("");
+      return session.serializer.serialize();
     }
-    const history = this.normalModeHistory.get(id);
-    return history ? history.join("") : "";
+    return this.persistedState.get(id) || "";
   }
 };
 
 // src/server/WebSocketServer.ts
 var VDevWebSocketServer = class {
   constructor(port = 9527) {
-    this.runners = /* @__PURE__ */ new Map();
     this.terminalManager = new TerminalManager();
     // Mapping from sessionId (projectPath hash) to connected clients
     this.sessionClients = /* @__PURE__ */ new Map();
-    // Track which sessions strictly have listeners attached to avoid duplicates
-    this.attachedSessions = /* @__PURE__ */ new Set();
     // Track which PTYs we are currently listening to, to handle restarts (Swap PTY)
     this.activePtys = /* @__PURE__ */ new Map();
     this.wss = new WebSocketServer({ port });
@@ -380,13 +352,7 @@ var VDevWebSocketServer = class {
         const message = JSON.parse(data.toString());
         switch (message.type) {
           case "EXECUTE_TASK":
-            await this.handleExecuteTask(ws, message, clientId, subscribedSessions);
-            break;
-          case "CANCEL_TASK":
-            this.handleCancelTask(ws, message, clientId);
-            break;
-          case "GET_STATUS":
-            this.handleGetStatus(ws, message, clientId);
+            await this.handleExecuteTask(ws, message, subscribedSessions);
             break;
           case "RESOLVE_PROJECT_PATH":
             await this.handleResolveProjectPath(ws, message);
@@ -397,11 +363,9 @@ var VDevWebSocketServer = class {
           case "TERMINAL_RESIZE":
             this.handleTerminalResize(message);
             break;
-          // @ts-ignore - Handle new message type
           case "TERMINAL_INIT":
             await this.handleTerminalInit(ws, message, subscribedSessions);
             break;
-          // @ts-ignore - Handle new message type
           case "TERMINAL_RESET":
             this.handleTerminalReset(message);
             break;
@@ -411,12 +375,7 @@ var VDevWebSocketServer = class {
       }
     });
     ws.on("close", () => {
-      console.log(`[VDev Bridge] Client ${clientId} disconnected`);
-      const runner = this.runners.get(clientId);
-      if (runner) {
-        runner.cancel();
-        this.runners.delete(clientId);
-      }
+      console.log(`[VDev Bridge] Client disconnected`);
       for (const sessionId of subscribedSessions) {
         const clients = this.sessionClients.get(sessionId);
         if (clients) {
@@ -509,7 +468,7 @@ var VDevWebSocketServer = class {
       });
     }
   }
-  async handleExecuteTask(ws, message, clientId, subscribedSessions) {
+  async handleExecuteTask(ws, message, subscribedSessions) {
     const payload = message.payload;
     const { source, instruction, projectPath: extensionProvidedPath } = payload;
     const projectPath = deriveProjectPathFromSource(source.fileName) || extensionProvidedPath;
@@ -517,72 +476,15 @@ var VDevWebSocketServer = class {
     console.log(`[VDev Bridge] Executing task for ${projectPath} (Session: ${sessionId})`);
     this.subscribeToSession(ws, sessionId, subscribedSessions);
     await this.ensureSession(sessionId, projectPath, false);
+    const prompt = PromptBuilder.build({ source, instruction });
+    this.terminalManager.sendData(sessionId, `
+${prompt}
+`);
     this.send(ws, {
       type: "TASK_STARTED",
       id: message.id,
       payload: { status: "running" },
       projectPath
-    });
-    const runner = new ClaudeCodeRunner();
-    this.runners.set(clientId, runner);
-    try {
-      const result = await runner.execute({
-        projectPath,
-        source,
-        instruction,
-        onLog: (log) => {
-          console.log(`[VDev Bridge log] ${log}`);
-          this.send(ws, {
-            type: "TASK_LOG",
-            id: message.id,
-            payload: { log },
-            projectPath
-          });
-        },
-        terminalManager: this.terminalManager,
-        sessionId
-        // Use persistent session ID
-      });
-      console.log(`[VDev Bridge] Task completed. Files modified: ${result.filesModified.join(", ")}`);
-      this.send(ws, {
-        type: "TASK_COMPLETED",
-        id: message.id,
-        payload: result,
-        projectPath
-      });
-    } catch (error) {
-      console.error("[VDev Bridge] Task error:", error);
-      this.send(ws, {
-        type: "TASK_ERROR",
-        id: message.id,
-        payload: { error: error.message },
-        projectPath
-      });
-    } finally {
-      this.runners.delete(clientId);
-    }
-  }
-  handleCancelTask(ws, message, clientId) {
-    const runner = this.runners.get(clientId);
-    if (runner) {
-      runner.cancel();
-      this.runners.delete(clientId);
-      console.log(`[VDev Bridge] Task cancelled for client ${clientId}`);
-    }
-    this.send(ws, {
-      type: "TASK_COMPLETED",
-      id: message.id,
-      payload: { cancelled: true }
-    });
-  }
-  handleGetStatus(ws, message, clientId) {
-    const runner = this.runners.get(clientId);
-    this.send(ws, {
-      type: "TASK_PROGRESS",
-      id: message.id,
-      payload: {
-        running: runner?.isRunning() ?? false
-      }
     });
   }
   async handleResolveProjectPath(ws, message) {
@@ -640,10 +542,6 @@ var VDevWebSocketServer = class {
     }
   }
   close() {
-    for (const runner of this.runners.values()) {
-      runner.cancel();
-    }
-    this.runners.clear();
     this.wss.close();
     console.log("[VDev Bridge] Server closed");
   }
@@ -666,7 +564,6 @@ function startServer(options = {}) {
   return server;
 }
 export {
-  ClaudeCodeRunner,
   PromptBuilder,
   VDevWebSocketServer,
   startServer

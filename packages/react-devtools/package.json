@@ -56,5 +56,8 @@
         "visual-dev",
         "element-inspector"
     ],
-    "license": "MIT"
+    "license": "MIT",
+    "publishConfig": {
+        "access": "public"
+    }
 }

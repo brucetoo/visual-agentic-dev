@@ -3,7 +3,12 @@
     "compilerOptions": {
         "outDir": "./dist",
         "rootDir": "./src",
-        "jsx": "preserve"
+        "jsx": "preserve",
+        "paths": {
+            "@xterm/xterm": [
+                "./node_modules/@xterm/headless"
+            ]
+        }
     },
     "include": [
         "src/**/*"

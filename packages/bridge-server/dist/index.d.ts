@@ -1,15 +1,11 @@
-import * as pty from 'node-pty';
-
 /**
  * WebSocket server that bridges browser extension to Claude Code CLI
  * No authentication required - for local development use only
  */
 declare class VDevWebSocketServer {
     private wss;
-    private runners;
     private terminalManager;
     private sessionClients;
-    private attachedSessions;
     constructor(port?: number);
     private getSessionId;
     private handleConnection;
@@ -19,8 +15,6 @@ declare class VDevWebSocketServer {
     private broadcastToSession;
     private handleTerminalInit;
     private handleExecuteTask;
-    private handleCancelTask;
-    private handleGetStatus;
     private handleResolveProjectPath;
     private handleTerminalData;
     private handleTerminalResize;
@@ -29,28 +23,13 @@ declare class VDevWebSocketServer {
     close(): void;
 }
 
-declare class TerminalManager {
-    private sessions;
-    private normalModeHistory;
-    private readonly MAX_HISTORY_LINES;
-    private _onReady;
-    onReady(callback: (sessionId: string) => void): void;
-    clearHistory(id: string): void;
-    isSessionReady(id: string): boolean;
-    getOrCreateSession(id: string, cwd: string, useYolo?: boolean): Promise<pty.IPty>;
-    sendData(id: string, data: string): void;
-    resize(id: string, cols: number, rows: number): void;
-    terminateSession(id: string): void;
-    getHistory(id: string): string;
-}
-
 interface SourceLocation {
     fileName: string;
     lineNumber: number;
     columnNumber: number;
 }
 interface ClientMessage {
-    type: 'AUTH' | 'EXECUTE_TASK' | 'CANCEL_TASK' | 'GET_STATUS' | 'RESOLVE_PROJECT_PATH' | 'TERMINAL_DATA' | 'TERMINAL_RESIZE';
+    type: 'AUTH' | 'EXECUTE_TASK' | 'CANCEL_TASK' | 'GET_STATUS' | 'RESOLVE_PROJECT_PATH' | 'TERMINAL_DATA' | 'TERMINAL_RESIZE' | 'TERMINAL_INIT' | 'TERMINAL_RESET';
     id: string;
     token?: string;
     payload?: ExecuteTaskPayload | ResolveProjectPathPayload | TerminalDataPayload | TerminalResizePayload;
@@ -138,23 +117,6 @@ interface ExecuteResult {
     messages: StreamMessage[];
 }
 
-interface ExecuteOptions {
-    projectPath: string;
-    source: SourceLocation;
-    instruction: string;
-    onLog?: (log: string) => void;
-    terminalManager: TerminalManager;
-    sessionId: string;
-}
-/**
- * Executes Claude Code CLI via the internal TerminalManager (node-pty)
- */
-declare class ClaudeCodeRunner {
-    execute(options: ExecuteOptions): Promise<ExecuteResult>;
-    cancel(): void;
-    isRunning(): boolean;
-}
-
 interface BuildOptions {
     source: SourceLocation;
     instruction: string;
@@ -174,4 +136,4 @@ interface ServerOptions {
  */
 declare function startServer(options?: ServerOptions): VDevWebSocketServer;
 
-export { ClaudeCodeRunner, type ClientMessage, type ExecuteResult, type ExecuteTaskPayload, PromptBuilder, type ResolveProjectPathPayload, type ServerMessage, type ServerOptions, type SourceLocation, type StreamMessage, type TerminalDataPayload, type TerminalResizePayload, VDevWebSocketServer, startServer };
+export { type ClientMessage, type ExecuteResult, type ExecuteTaskPayload, PromptBuilder, type ResolveProjectPathPayload, type ServerMessage, type ServerOptions, type SourceLocation, type StreamMessage, type TerminalDataPayload, type TerminalResizePayload, VDevWebSocketServer, startServer };

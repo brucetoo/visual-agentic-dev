@@ -1,5 +1,7 @@
 import * as pty from 'node-pty';
 import * as os from 'os';
+import { Terminal } from '@xterm/headless';
+import { SerializeAddon } from '@xterm/addon-serialize';
 import { ToolManager } from './ToolManager';
 
 const shell = os.platform() === 'win32'
@@ -8,16 +10,18 @@ const shell = os.platform() === 'win32'
 
 interface TerminalSession {
     pty: pty.IPty;
-    history: string[]; // Circular buffer-ish
+    headless: Terminal;
+    serializer: SerializeAddon;
     useYolo: boolean;
     isReady: boolean;
+    historyBuffer: string[]; // Keep a small buffer for readiness detection
 }
 
 export class TerminalManager {
     private sessions: Map<string, TerminalSession> = new Map();
-    // Persist history for Normal mode sessions by ID
-    private normalModeHistory: Map<string, string[]> = new Map();
-    private readonly MAX_HISTORY_LINES = 1000;
+    // Persist serialized state for sessions by ID
+    private persistedState: Map<string, string> = new Map();
+    private readonly READINESS_BUFFER_SIZE = 50;
 
     private _onReady: (sessionId: string) => void = () => { };
 
@@ -29,9 +33,10 @@ export class TerminalManager {
     clearHistory(id: string): void {
         const session = this.sessions.get(id);
         if (session) {
-            session.history = [];
+            session.headless.reset();
+            session.historyBuffer = [];
         }
-        this.normalModeHistory.set(id, []);
+        this.persistedState.delete(id);
     }
 
     isSessionReady(id: string): boolean {
@@ -68,166 +73,27 @@ export class TerminalManager {
                 env: { ...process.env } as any
             });
 
-            // History Strategy
-            // History Strategy
-            // We want history for YOLO mode too now to support page reloading
-            let historyArray: string[] = [];
+            // Create headless terminal
+            const headless = new Terminal({
+                allowProposedApi: true,
+                cols: 80,
+                rows: 24,
+                scrollback: 1000
+            });
+            const serializer = new SerializeAddon();
+            headless.loadAddon(serializer);
 
-            // Try to restore from normal mode history if switching modes? 
-            // Or just keep separate?
-            // User wants history to persist when switching pages (which might look like new init).
-            // So we should persist history by ID regardless of mode?
-            // Actually, getOrCreateSession handles the "session exists case" earlier.
-            // This block is only for NEW sessions.
-            // If we are here, it means we are creating a FRESH pty.
-
-            // However, if we want to PERSIST history across pty restarts (like YOLO toggle),
-            // we need to shore it outside.
-            // But here we are just talking about page reload (client reconnect).
-            // Client reconnect should hit the *existing* session if it's still alive.
-
-            // WAIT. If I reload the page, the WS connection closes.
-            // WebSocketServer.ts: handleConnection -> close -> unsubscribe -> delete if empty?
-            // `this.sessionClients.delete(sessionId);` logic in WSS.
-
-            // BUT `TerminalManager` keeps the session alive?
-            // `TerminalManager` stores sessions in `this.sessions`.
-            // There is no auto-cleanup in `TerminalManager` unless process exits.
-
-            // So if I reload page:
-            // 1. Old WS closes.
-            // 2. New WS connects.
-            // 3. New WS sends TERMINAL_INIT.
-            // 4. WSS calls `getOrCreateSession`.
-            // 5. TM finds existing session in `this.sessions`.
-            // 6. Returns existing PTY.
-            // 7. WSS sends history.
-
-            // So why is history empty?
-            // Ah! `historyArray` initialization logic here:
-            // History Strategy
-            // We want history for YOLO mode too now to support page reloading
-
-            if (!this.normalModeHistory.has(id)) {
-                this.normalModeHistory.set(id, []);
+            // Restore state if exists
+            const savedState = this.persistedState.get(id);
+            if (savedState) {
+                headless.write(savedState);
             }
-            historyArray = this.normalModeHistory.get(id)!;
 
-            // If the session is kept alive, `sessionWrapper.history` should have data.
-            // `getHistory` uses `session.history`.
-
-            // Let's look at `getHistory`:
-            /*
-            getHistory(id: string): string {
-                const session = this.sessions.get(id);
-                if (session) {
-                    return session.history.join('');
-                }
-                const normalHistory = this.normalModeHistory.get(id);
-                return normalHistory ? normalHistory.join('') : '';
-            }
-            */
-
-            // If session exists, it returns `session.history`.
-            // If I am in YOLO mode, `session.history` is being populated (line 95).
-
-            // So why empty? 
-            // Maybe the session IS being killed?
-
-            // In WSS close handler:
-            // if (clients.size === 0) { ... // Optional: Terminate session if no clients? }
-            // It says "We still keep the process alive in TerminalManager".
-
-            // Wait, does checking `isLocalhost` cause a `disconnect` call from frontend?
-            // App.tsx: 
-            // useEffect(() => { connect() }, [])
-            // If unmounted? useWebSocket doesn't auto-disconnect on unmount?
-
-            // If I switch to a non-local page:
-            // Content script might stop sending messages?
-            // The extension sidepanel is global for the window.
-            // The sidepanel might NOT unmount if I just switch tabs?
-            // But `App` causes `TerminalPanel` to unmount. 
-            // `useWebSocket` hook is still running in `App`.
-
-            // If `isLocalhost` becomes false:
-            // `App` returns "Not Supported" UI. 
-            // `TerminalPanel` is gone.
-
-            // `useWebSocket` is still connected!
-            // But `onTerminalOutput` logic:
-            // onTerminalOutput: (data) => terminalRef.current?.write(data)
-
-            // `terminalRef.current` is NULL because `TerminalPanel` is unmounted.
-            // So any data arriving during this time is DROPPED by the frontend.
-
-            // When I switch back:
-            // `TerminalPanel` remounts. Term is empty.
-            // `useWebSocket` is ALREADY connected.
-            // `useEffect` -> `sendTerminalInit`.
-
-            // WSS handles `TERMINAL_INIT`.
-            // It subscribes (or re-subscribes).
-            // It calls `ensureSession`.
-            // It calls `getHistory`.
-            // It sends history!
-
-            // So history IS sent.
-            // Why doesn't the terminal show it?
-
-            // Maybe `terminalRef.current` is not ready when `onTerminalOutput` receives history?
-            // `App.tsx`:
-            // useEffect(() => { if(projectPath...) sendTerminalInit(...) }, ...)
-
-            // `useWebSocket` receives message.
-            // `onTerminalOutput` calls `terminalRef.current.write`.
-
-            // If `sendTerminalInit` triggers immediate response, and `TerminalPanel` is just mounting...
-            // `TerminalPanel` uses `useEffect([], ...)` to init xterm.
-            // Ref is assigned inside `useEffect`.
-            // `terminalRef` passed to `TerminalPanel` is `useRef(null)`.
-            // `useImperativeHandle` populates it.
-
-            // Race condition?
-            // `TerminalPanel` mount -> `useImperativeHandle` (sync-ish but ref update might be late?) -> `useEffect`.
-            // `App` useEffect -> `sendTerminalInit`.
-
-            // The `sendTerminalInit` is in a `useEffect`.
-            // `TerminalPanel` is rendered in the return.
-
-            // React render flow:
-            // 1. Render `App` (with `isLocalhost=true`).
-            // 2. Render `TerminalPanel`.
-            // 3. `TerminalPanel` mounts. `useImperativeHandle` runs. Ref is set?
-            // 4. `App` useEffect runs. calls `sendTerminalInit`.
-
-            // Verify `TerminalManager.ts` change first just in case:
-            // Make history persistent for YOLO too.
-            // Because if the session WAS terminated (e.g. error), we lose history.
-            // But the user says "Switching between local pages is fine", "Switching from non-local is fail".
-            // Switching between local pages -> `TerminalPanel` might stay mounted? Or re-mount very fast?
-
-            // If I go to non-local page, `isLocalhost` is false.
-            // `TerminalPanel` unmounts.
-            // `App` is waiting.
-
-            // If backend sends history, it should work.
-
-            // Let's patch `TerminalManager` to be safe regarding YOLO history 
-            // (currently it init to `[]` every time `getOrCreateSession` makes a new one, 
-            // preventing persistence if session restarts).
-            // But the main issue might be frontend race.
-
-            // I will apply the TerminalManager fix first as it's definitely "wrong" to not have history for YOLO.
-
-            if (!this.normalModeHistory.has(id)) {
-                this.normalModeHistory.set(id, []);
-            }
-            historyArray = this.normalModeHistory.get(id)!;
+            let historyBuffer: string[] = [];
 
             // --- Readiness Detection Logic ---
-            // Markers that indicate Claude Code is interactive/ready
-            // e.g. "Welcome back!", "Try", "Visual Dev", or the prompt "> " or specific control sequences
+
+
             // Markers that indicate Claude Code is interactive/ready
             // e.g. "Welcome back!", "Try", "Visual Dev", or the prompt "> " or specific control sequences
             const readyMarkers = [
@@ -242,25 +108,30 @@ export class TerminalManager {
 
             sessionWrapper = {
                 pty: ptyProcess,
-                history: historyArray,
+                headless,
+                serializer,
                 useYolo,
-                isReady: false
+                isReady: false,
+                historyBuffer
             };
 
             // Capture output for history & readiness
             ptyProcess.onData((data) => {
                 if (sessionWrapper) {
-                    sessionWrapper.history.push(data);
-                    if (sessionWrapper.history.length > this.MAX_HISTORY_LINES) {
-                        sessionWrapper.history.shift();
+                    // Write to headless terminal for state tracking
+                    sessionWrapper.headless.write(data);
+
+                    // Buffer for readiness detection only
+                    sessionWrapper.historyBuffer.push(data);
+                    if (sessionWrapper.historyBuffer.length > this.READINESS_BUFFER_SIZE) {
+                        sessionWrapper.historyBuffer.shift();
                     }
 
                     // Check for readiness if not already ready
                     if (!sessionWrapper.isReady) {
-                        // Strip ANSI codes for cleaner matching
                         // eslint-disable-next-line no-control-regex
                         const cleanData = data.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
-
+                        // Check logic remains same, but we check `data` chunk mainly
                         const hasMarker = readyMarkers.some(marker => cleanData.includes(marker) || data.includes(marker));
 
                         if (hasMarker) {
@@ -308,6 +179,7 @@ export class TerminalManager {
         if (session) {
             try {
                 session.pty.resize(cols, rows);
+                session.headless.resize(cols, rows);
             } catch (e) {
                 console.error('[TerminalManager] Resize error:', e);
             }
@@ -318,6 +190,12 @@ export class TerminalManager {
         const session = this.sessions.get(id);
         if (session) {
             const pid = session.pty.pid;
+
+            // Save state before destroying
+            this.persistedState.set(id, session.serializer.serialize());
+
+            // Clean up headless
+            session.headless.dispose();
 
             // Remove immediately to prevent race conditions
             this.sessions.delete(id);
@@ -344,15 +222,9 @@ export class TerminalManager {
     getHistory(id: string): string {
         const session = this.sessions.get(id);
         if (session) {
-            return session.history.join('');
+            return session.serializer.serialize();
         }
 
-        // Fallback for sessions that might have been terminated but we want to keep history?
-        // With the new logic, we are storing history in `normalModeHistory` map if !useYolo?
-        // Wait, I updated the creation logic to ALWAYS use `normalModeHistory`.
-        // So checking `normalModeHistory` is correct.
-
-        const history = this.normalModeHistory.get(id);
-        return history ? history.join('') : '';
+        return this.persistedState.get(id) || '';
     }
 }

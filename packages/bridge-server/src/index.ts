@@ -32,6 +32,6 @@ export function startServer(options: ServerOptions = {}): VDevWebSocketServer {
 
 // Re-export types and classes
 export { VDevWebSocketServer } from './server/WebSocketServer';
-export { ClaudeCodeRunner } from './claude/ClaudeCodeRunner';
+
 export { PromptBuilder } from './claude/PromptBuilder';
 export * from './types';
