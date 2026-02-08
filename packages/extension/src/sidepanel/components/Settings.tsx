@@ -33,10 +33,10 @@ export const Settings: React.FC<SettingsProps> = ({
     };
 
     return (
-        <div className="vdev-sidepanel settings-panel">
+        <div className="settings-panel">
             <header className="vdev-header">
                 <h1>⚙️ 设置</h1>
-                <button className="close-btn" onClick={onClose}>
+                <button className="action-btn" onClick={onClose} title="关闭">
                     ✕
                 </button>
             </header>

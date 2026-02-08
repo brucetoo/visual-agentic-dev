@@ -38,44 +38,143 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 4px;
+  /* Reduced gap */
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .vdev-header h1 {
-  font-size: 16px;
+  font-size: 14px;
+  /* Slightly smaller for density */
   font-weight: 600;
+  margin: 0;
+}
+
+.status-indicator-compact {
+  display: flex;
+  align-items: center;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vdev-text-muted);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+}
+
+.status-indicator-compact.connected .status-dot {
+  background: var(--vdev-success);
+  box-shadow: 0 0 4px var(--vdev-success);
+}
+
+.status-indicator-compact.connecting .status-dot {
+  background: var(--vdev-warning);
+  animation: pulse 1s infinite;
+}
+
+.status-indicator-compact.error .status-dot {
+  background: var(--vdev-error);
 }
 
 .header-actions {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 4px;
+  /* Tighter gap for toolbar feel */
 }
 
-.inspect-btn,
-.settings-btn,
-.close-btn {
-  width: 32px;
-  height: 32px;
+.action-btn {
+  width: 28px;
+  height: 28px;
   border: none;
-  border-radius: 8px;
-  background: var(--vdev-surface);
-  color: var(--vdev-text);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--vdev-text-muted);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
 }
 
-.inspect-btn:hover,
-.settings-btn:hover,
-.close-btn:hover {
-  background: var(--vdev-border);
+.action-btn:hover {
+  background: var(--vdev-surface);
+  color: var(--vdev-text);
 }
 
-.inspect-btn.active {
+.action-btn.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--vdev-primary);
+}
+
+.yolo-btn.active {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--vdev-warning);
+  /* Amber for YOLO */
+}
+
+/* Icon-only buttons in Header */
+.header-actions .connect-btn {
+  color: var(--vdev-text-muted);
+}
+
+.header-actions .connect-btn:hover {
+  color: var(--vdev-success);
+}
+
+.header-actions .disconnect-btn:hover {
+  color: var(--vdev-error);
+}
+
+/* Text buttons in Settings */
+.settings-panel .connect-btn,
+.settings-panel .disconnect-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  width: auto;
+}
+
+.settings-panel .connect-btn {
   background: var(--vdev-primary);
-  animation: pulse 1.5s infinite;
+  color: white;
+}
+
+.settings-panel .connect-btn:hover {
+  background: var(--vdev-primary-hover);
+}
+
+.settings-panel .disconnect-btn {
+  background: transparent;
+  color: var(--vdev-text-muted);
+  border: 1px solid var(--vdev-border);
+}
+
+.settings-panel .disconnect-btn:hover {
+  border-color: var(--vdev-text-muted);
+  color: var(--vdev-text);
+  background: var(--vdev-surface);
+}
+
+.action-separator {
+  width: 1px;
+  height: 16px;
+  background: var(--vdev-border);
+  margin: 0 2px;
 }
 
 @keyframes pulse {
@@ -86,78 +185,11 @@ body {
   }
 
   50% {
-    opacity: 0.7;
+    opacity: 0.5;
   }
 }
 
-/* Status Bar */
-.status-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--vdev-surface);
-  border-radius: 8px;
-  font-size: 12px;
-}
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.status-dot.connected {
-  background: var(--vdev-success);
-}
-
-.status-dot.connecting {
-  background: var(--vdev-warning);
-  animation: pulse 1s infinite;
-}
-
-.status-dot.disconnected {
-  background: var(--vdev-text-muted);
-}
-
-.status-dot.error {
-  background: var(--vdev-error);
-}
-
-.connect-btn,
-.disconnect-btn {
-  padding: 4px 12px;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.connect-btn {
-  background: var(--vdev-primary);
-  color: white;
-}
-
-.connect-btn:hover {
-  background: var(--vdev-primary-hover);
-}
-
-.disconnect-btn {
-  background: transparent;
-  color: var(--vdev-text-muted);
-  border: 1px solid var(--vdev-border);
-}
-
-.disconnect-btn:hover {
-  border-color: var(--vdev-text-muted);
-}
+/* Status Bar - Removed (Integrated into Header) */
 
 /* Source Info */
 .source-info {
@@ -218,130 +250,41 @@ body {
   margin-left: 4px;
 }
 
-/* Chat Panel */
-.chat-panel {
+/* Terminal Section - Full Height */
+.terminal-section {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  background: var(--vdev-surface);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.message-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--vdev-text-muted);
-  text-align: center;
-  padding: 20px;
-}
-
-.message {
-  padding: 10px 14px;
-  border-radius: 12px;
-  max-width: 90%;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-size: 13px;
-}
-
-.message.user {
-  background: var(--vdev-primary);
-  align-self: flex-end;
-  border-bottom-right-radius: 4px;
-}
-
-.message.assistant {
-  background: var(--vdev-border);
-  align-self: flex-start;
-  border-bottom-left-radius: 4px;
-}
-
-.message.system {
-  background: transparent;
-  color: var(--vdev-text-muted);
-  font-size: 12px;
-  text-align: center;
-  align-self: center;
-  padding: 4px 8px;
-}
-
-/* Message Input */
-.message-input {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  background: #1a1a1a;
   border-top: 1px solid var(--vdev-border);
-}
-
-.message-input textarea {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid var(--vdev-border);
-  border-radius: 8px;
-  background: var(--vdev-bg);
-  color: var(--vdev-text);
-  resize: none;
-  font-size: 14px;
-  font-family: inherit;
-}
-
-.message-input textarea:focus {
-  outline: none;
-  border-color: var(--vdev-primary);
-}
-
-.message-input textarea:disabled {
-  opacity: 0.5;
-}
-
-.input-actions {
   display: flex;
-  gap: 8px;
-  justify-content: flex-end;
+  flex-direction: column;
+  margin: -12px;
+  margin-top: 0;
+  overflow: hidden;
+  min-height: 200px;
+  /* Minimum height ensures it doesn't collapse too much */
 }
 
-.input-actions button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
+/* Flex grow helper */
+.flex-grow {
+  flex-grow: 1;
 }
 
-.input-actions button[type="submit"] {
-  background: var(--vdev-primary);
-  color: white;
-}
-
-.input-actions button[type="submit"]:hover:not(:disabled) {
-  background: var(--vdev-primary-hover);
-}
-
-.input-actions button[type="submit"]:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.input-actions .clear-btn {
-  background: transparent;
+.terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: #2d2d2d;
+  font-size: 11px;
   color: var(--vdev-text-muted);
-  border: 1px solid var(--vdev-border);
+  border-bottom: 1px solid #333;
+}
+
+.terminal-container {
+  flex: 1;
+  min-height: 0;
+  padding: 4px;
+  /* Optional padding around terminal */
 }
 
 /* Settings Panel */
@@ -515,3 +458,5 @@ body {
   color: var(--vdev-primary);
   border-radius: 12px;
 }
+
+/* Mode Controls - Removed (Integrated into Header) */

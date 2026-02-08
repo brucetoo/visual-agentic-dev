@@ -1,34 +1,71 @@
 import React from 'react';
-import type { SourceLocation, ElementInfo } from '../../shared/types';
+import type { SelectedElement } from '../../shared/types';
 
 interface SourceInfoProps {
-    source: SourceLocation;
-    elementInfo: ElementInfo | null;
+    selectedElements: SelectedElement[];
+    onRemove: (index: number) => void;
     onClear: () => void;
 }
 
-export const SourceInfo: React.FC<SourceInfoProps> = ({ source, elementInfo, onClear }) => {
-    const fileName = source.fileName.split('/').pop() || source.fileName;
+export const SourceInfo: React.FC<SourceInfoProps> = ({ selectedElements, onRemove, onClear }) => {
+    if (selectedElements.length === 0) return null;
 
     return (
         <div className="source-info">
             <div className="source-header">
-                <span className="source-label">选中元素</span>
-                <button className="clear-selection" onClick={onClear} title="清除选择">
+                <span className="source-label">选中元素 ({selectedElements.length})</span>
+                <button className="clear-selection" onClick={onClear} title="清除全部">
                     ✕
                 </button>
             </div>
-            <code className="source-location">
-                {fileName}:{source.lineNumber}
-            </code>
-            {elementInfo && (
-                <div className="element-info">
-                    <span className="tag-name">&lt;{elementInfo.tagName}&gt;</span>
-                    {elementInfo.className && (
-                        <span className="class-name">.{elementInfo.className.split(' ')[0]}</span>
-                    )}
-                </div>
-            )}
+            <div className="selected-elements-list" style={{ display: 'flex', flexDirection: 'row', gap: '4px', overflowX: 'auto' }}>
+                {selectedElements.map((item, index) => {
+                    const fileName = item.source.fileName.split('/').pop() || item.source.fileName;
+                    return (
+                        <div key={index} className="selected-item" style={{
+                            flex: 1,
+                            minWidth: 0, // Allow flex items to shrink below content size
+                            padding: '6px',
+                            background: 'var(--vdev-bg)',
+                            borderRadius: '4px',
+                            position: 'relative',
+                            border: '1px solid var(--vdev-border)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center'
+                        }}>
+                            <button
+                                onClick={() => onRemove(index)}
+                                style={{
+                                    position: 'absolute',
+                                    top: '2px',
+                                    right: '2px',
+                                    border: 'none',
+                                    background: 'rgba(0,0,0,0.3)',
+                                    color: 'var(--vdev-text-muted)',
+                                    cursor: 'pointer',
+                                    fontSize: '10px',
+                                    width: '14px',
+                                    height: '14px',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: 0
+                                }}
+                                title="Remove"
+                            >✕</button>
+
+                            <code className="source-location" style={{ fontSize: '11px', display: 'block', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {fileName}:{item.source.lineNumber}
+                            </code>
+                            <div className="element-info" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                <span className="tag-name">&lt;{item.elementInfo.tagName}&gt;</span>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 };

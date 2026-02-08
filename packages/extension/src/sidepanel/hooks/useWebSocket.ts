@@ -6,7 +6,7 @@ interface StreamMessage {
     type: string;
     message?: {
         content: Array<{
-            type: string;
+            type: 'text' | 'tool_use' | 'tool_result';
             text?: string;
         }>;
     };
@@ -18,20 +18,29 @@ interface PendingResolve {
 }
 
 interface UseWebSocketOptions {
+    projectPath?: string | null;
     onMessage?: (role: Message['role'], content: string) => void;
+    onTerminalOutput?: (data: string) => void;
+    onTerminalReady?: () => void;
 }
 
 export function useWebSocket(options: UseWebSocketOptions = {}) {
-    const { onMessage } = options;
+    const { onMessage, onTerminalOutput, onTerminalReady, projectPath } = options;
     const [status, setStatus] = useState<ConnectionStatus>('disconnected');
     const wsRef = useRef<WebSocket | null>(null);
     const pendingResolvesRef = useRef<Map<string, PendingResolve>>(new Map());
     const onMessageRef = useRef(onMessage);
+    const onTerminalOutputRef = useRef(onTerminalOutput);
+    const onTerminalReadyRef = useRef(onTerminalReady);
+    const projectPathRef = useRef(projectPath);
 
-    // Keep ref updated
+    // Keep refs updated
     useEffect(() => {
         onMessageRef.current = onMessage;
-    }, [onMessage]);
+        onTerminalOutputRef.current = onTerminalOutput;
+        onTerminalReadyRef.current = onTerminalReady;
+        projectPathRef.current = projectPath;
+    }, [onMessage, onTerminalOutput, onTerminalReady, projectPath]);
 
     const addMessage = useCallback((role: Message['role'], content: string) => {
         onMessageRef.current?.(role, content);
@@ -51,38 +60,39 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
 
+            // Filter task messages by projectPath if provided
+            if (data.type.startsWith('TASK_') && data.projectPath && projectPathRef.current) {
+                if (data.projectPath !== projectPathRef.current) {
+                    console.log(`[useWebSocket] Ignoring message for different project: ${data.projectPath} (current: ${projectPathRef.current})`);
+                    return;
+                }
+            }
+
             switch (data.type) {
                 case 'TASK_STARTED':
-                    addMessage('system', '📤 已发送到 iTerm Claude Code终端, 请查看...');
-                    break;
-
-                case 'TASK_PROGRESS':
-                    // Extract text from stream message
-                    const streamMsg = data.payload as StreamMessage;
-                    if (streamMsg.message?.content) {
-                        for (const block of streamMsg.message.content) {
-                            if (block.type === 'text' && block.text) {
-                                addMessage('assistant', block.text);
-                            }
-                        }
-                    }
+                    addMessage('system', '📤 已发送指令到终端...');
                     break;
 
                 case 'TASK_COMPLETED':
-                    addMessage('system', '✅ 指令已发送到 iTerm, 请移步查看进度...');
-                    break;
-
-                case 'TASK_ERROR':
-                    addMessage('system', `❌ 错误: ${data.payload.error}`);
+                    // We don't really have a completion event from terminal easily, 
+                    // but the server sends this after writing to pty.
                     break;
 
                 case 'PROJECT_PATH_RESOLVED':
-                    // Handle project path resolution response
                     const pending = pendingResolvesRef.current.get(data.id);
                     if (pending) {
                         pending.resolve(data.payload?.projectPath || null);
                         pendingResolvesRef.current.delete(data.id);
                     }
+                    break;
+                case 'TERMINAL_OUTPUT':
+                    if (data.payload?.data) {
+                        onTerminalOutputRef.current?.(data.payload.data);
+                    }
+                    break;
+                case 'TERMINAL_READY':
+                    console.log('[useWebSocket] Received TERMINAL_READY');
+                    onTerminalReadyRef.current?.();
                     break;
             }
         };
@@ -156,13 +166,55 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         };
     }, []);
 
+    const sendTerminalData = useCallback((data: string, projectPath?: string, useYolo?: boolean) => {
+        if (!wsRef.current || status !== 'connected') return;
+
+        wsRef.current.send(JSON.stringify({
+            type: 'TERMINAL_DATA',
+            id: crypto.randomUUID(),
+            payload: { data, projectPath, useYolo },
+        }));
+    }, [status]);
+
+    const sendTerminalInit = useCallback((projectPath: string, useYolo: boolean = false) => {
+        if (!wsRef.current || status !== 'connected') return;
+
+        wsRef.current.send(JSON.stringify({
+            type: 'TERMINAL_INIT',
+            id: crypto.randomUUID(),
+            payload: { projectPath, useYolo },
+        }));
+    }, [status]);
+
+    const sendTerminalResize = useCallback((cols: number, rows: number, projectPath?: string) => {
+        if (!wsRef.current || status !== 'connected') return;
+
+        wsRef.current.send(JSON.stringify({
+            type: 'TERMINAL_RESIZE',
+            id: crypto.randomUUID(),
+            payload: { cols, rows, projectPath },
+        }));
+    }, [status]);
+
+    const sendTerminalReset = useCallback((projectPath: string) => {
+        if (!wsRef.current || status !== 'connected') return;
+
+        wsRef.current.send(JSON.stringify({
+            type: 'TERMINAL_RESET',
+            id: crypto.randomUUID(),
+            payload: { projectPath },
+        }));
+    }, [status]);
+
     return {
         status,
         connect,
         disconnect,
         sendTask,
         resolveProjectPath,
+        sendTerminalData,
+        sendTerminalInit,
+        sendTerminalResize,
+        sendTerminalReset,
     };
 }
-
-

@@ -1,8 +1,6 @@
 // src/server/WebSocketServer.ts
 import { WebSocketServer, WebSocket } from "ws";
-
-// src/claude/ClaudeCodeRunner.ts
-import { createHash } from "crypto";
+import * as crypto from "crypto";
 
 // src/claude/PromptBuilder.ts
 var PromptBuilder = class {
@@ -32,179 +30,28 @@ ${instruction}
   }
 };
 
-// src/utils/apple-script.ts
-import { exec } from "child_process";
-import { promisify } from "util";
-var execAsync = promisify(exec);
-async function runAppleScript(script) {
-  try {
-    const { stdout } = await execAsync(`osascript -e '${script.replace(/'/g, "'\\''")}'`);
-    return stdout.trim();
-  } catch (error) {
-    throw new Error(`AppleScript execution failed: ${error.message}`);
-  }
-}
-function escapeForAppleScript(text) {
-  return text.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
-
-// src/utils/DevTerminal.ts
-var DevTerminal = class {
-  static {
-    // Track window IDs by project ID
-    this.windowIdMap = /* @__PURE__ */ new Map();
-  }
-  static {
-    // Track sessions where we've started ccr code
-    this.activeSessions = /* @__PURE__ */ new Set();
-  }
-  /**
-   * Checks if a session with the given project ID exists
-   */
-  static async sessionExists(projectId) {
-    const windowId = this.windowIdMap.get(projectId);
-    if (!windowId) return false;
-    try {
-      const script = `
-                tell application "iTerm"
-                    repeat with w in windows
-                        if id of w is ${windowId} then
-                            return "true"
-                        end if
-                    end repeat
-                end tell
-                return "false"
-            `;
-      const result = await runAppleScript(script);
-      return result === "true";
-    } catch (e) {
-      return false;
-    }
-  }
-  /**
-   * Gets the current terminal content for the project's window
-   */
-  static async getSessionContent(projectId) {
-    const windowId = this.windowIdMap.get(projectId);
-    if (!windowId) return "";
-    try {
-      const script = `
-                tell application "iTerm"
-                    repeat with w in windows
-                        if id of w is ${windowId} then
-                            return contents of current session of w
-                        end if
-                    end repeat
-                end tell
-                return ""
-            `;
-      return await runAppleScript(script);
-    } catch (e) {
-      return "";
-    }
-  }
-  /**
-   * Waits for ccr code to be ready (polls for prompt indicator)
-   */
-  static async waitForAgentReady(projectId, timeoutMs = 3e4) {
-    const startTime = Date.now();
-    const pollInterval = 500;
-    while (Date.now() - startTime < timeoutMs) {
-      const content = await this.getSessionContent(projectId);
-      if (content.includes("Claude Code v") || content.includes("Welcome back") || content.includes("/model to try") || content.includes("Tips for getting")) {
-        return true;
-      }
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
-    }
-    return false;
-  }
-  /**
-   * Launches a new iTerm window/session for the project and stores its ID
-   */
-  static async launchSession(projectId, projectPath) {
-    const script = `
-            tell application "iTerm"
-                set newWindow to (create window with default profile)
-                set windowId to id of newWindow
-                tell current session of newWindow
-                    write text "cd ${escapeForAppleScript(projectPath)}"
-                    write text "clear"
-                    write text "ccr code"
-                end tell
-                return windowId
-            end tell
-        `;
-    const windowIdStr = await runAppleScript(script);
-    const windowId = parseInt(windowIdStr, 10);
-    if (!isNaN(windowId)) {
-      this.windowIdMap.set(projectId, windowId);
-    }
-    this.activeSessions.add(projectId);
-  }
-  /**
-   * Ensures ccr code is running and ready for input
-   */
-  static async ensureAgentRunning(projectId) {
-    if (!this.activeSessions.has(projectId)) {
-      await this.sendInput(projectId, "ccr code");
-      this.activeSessions.add(projectId);
-    }
-    return await this.waitForAgentReady(projectId);
-  }
-  /**
-   * Sends input to the session using window ID
-   */
-  static async sendInput(projectId, text) {
-    const windowId = this.windowIdMap.get(projectId);
-    if (!windowId) {
-      throw new Error(`No window found for project ${projectId}`);
-    }
-    const escapedText = escapeForAppleScript(text);
-    const script = `
-            tell application "iTerm"
-                repeat with w in windows
-                    if id of w is ${windowId} then
-                        tell current session of w
-                            write text "${escapedText}"
-                            select
-                        end tell
-                        set index of w to 1
-                        activate
-                        return
-                    end if
-                end repeat
-            end tell
-        `;
-    await runAppleScript(script);
-  }
-};
-
 // src/claude/ClaudeCodeRunner.ts
 var ClaudeCodeRunner = class {
   async execute(options) {
-    const { projectPath, source, instruction, onLog } = options;
+    const { projectPath, source, instruction, onLog, terminalManager, sessionId } = options;
     const prompt = PromptBuilder.build({ source, instruction });
-    const projectId = createHash("md5").update(projectPath).digest("hex").substring(0, 8);
     try {
-      onLog?.(`[ClaudeRunner] Target Session: vdev-${projectId}`);
-      const exists = await DevTerminal.sessionExists(projectId);
-      if (!exists) {
-        onLog?.("[ClaudeRunner] Launching new iTerm session...");
-        await DevTerminal.launchSession(projectId, projectPath);
-      } else {
-        onLog?.("[ClaudeRunner] Reusing existing session");
-      }
-      onLog?.("[ClaudeRunner] Waiting for ccr to be ready...");
-      const ready = await DevTerminal.ensureAgentRunning(projectId);
-      if (!ready) {
-        onLog?.("[ClaudeRunner] Warning: ccr may not be fully ready");
-      }
-      onLog?.("[ClaudeRunner] Sending instruction...");
-      await DevTerminal.sendInput(projectId, prompt);
+      onLog?.(`[ClaudeRunner] Using session: ${sessionId}`);
+      const session = await terminalManager.getOrCreateSession(
+        sessionId,
+        projectPath,
+        false
+        // Default to safe mode unless otherwise specified? Or maybe we can detect?
+        // Actually, if the session exists, this arg is ignored. If new, it matters.
+        // For now, let's assume the user opens the terminal first or we default to safe.
+      );
+      onLog?.("[ClaudeRunner] Sending instruction to terminal...");
+      terminalManager.sendData(sessionId, `
+${prompt}
+`);
       return {
         success: true,
         filesModified: [],
-        // Interactive mode doesn't track this automatically
         messages: []
       };
     } catch (error) {
@@ -220,14 +67,14 @@ var ClaudeCodeRunner = class {
 };
 
 // src/utils/ProjectUtils.ts
-import { exec as exec2 } from "child_process";
-import { promisify as promisify2 } from "util";
+import { exec } from "child_process";
+import { promisify } from "util";
 import * as path from "path";
 import * as fs from "fs";
-var execAsync2 = promisify2(exec2);
+var execAsync = promisify(exec);
 async function resolveProjectPath(port) {
   try {
-    const { stdout: lsofOutput } = await execAsync2(
+    const { stdout: lsofOutput } = await execAsync(
       `lsof -i :${port} -P -n | grep LISTEN | awk '{print $2}' | head -1`
     );
     const pid = lsofOutput.trim();
@@ -236,7 +83,7 @@ async function resolveProjectPath(port) {
       return null;
     }
     console.log(`[ProjectUtils] Found PID ${pid} for port ${port}`);
-    const { stdout: cwdOutput } = await execAsync2(
+    const { stdout: cwdOutput } = await execAsync(
       `lsof -p ${pid} | grep cwd | awk '{print $NF}'`
     );
     const cwd = cwdOutput.trim();
@@ -283,23 +130,257 @@ function findProjectRoot(startPath) {
   return null;
 }
 
+// src/utils/TerminalManager.ts
+import * as pty from "node-pty";
+import * as os from "os";
+
+// src/utils/ToolManager.ts
+import { execSync } from "child_process";
+var ToolManager = class {
+  /**
+   * Checks if a command exists in the system PATH
+   */
+  static checkCommand(command) {
+    try {
+      execSync(`which ${command}`, { stdio: "ignore" });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  /**
+   * Checks if both required tools are installed
+   */
+  static checkTools() {
+    return {
+      claude: this.checkCommand("claude"),
+      ccr: this.checkCommand("ccr")
+    };
+  }
+  /**
+   * Attempts to install the missing tools
+   */
+  static async installTools() {
+    const { claude, ccr } = this.checkTools();
+    if (claude && ccr) {
+      console.log("[ToolManager] All tools are already installed.");
+      return true;
+    }
+    try {
+      if (!claude) {
+        console.log("[ToolManager] Installing @anthropic-ai/claude-code...");
+        execSync("npm install -g @anthropic-ai/claude-code", { stdio: "inherit" });
+      }
+      if (!ccr) {
+        console.log("[ToolManager] Installing @musistudio/claude-code-router...");
+        execSync("npm install -g @musistudio/claude-code-router", { stdio: "inherit" });
+      }
+      return true;
+    } catch (error) {
+      console.error(`[ToolManager] Installation failed: ${error.message}`);
+      return false;
+    }
+  }
+  /**
+   * Ensures tools are ready, installs if necessary
+   */
+  static async ensureTools() {
+    const status = this.checkTools();
+    if (status.claude && status.ccr) return true;
+    console.log("[ToolManager] Some tools are missing. Attempting auto-installation...");
+    return await this.installTools();
+  }
+};
+
+// src/utils/TerminalManager.ts
+var shell = os.platform() === "win32" ? "powershell.exe" : process.env.SHELL || "/bin/zsh";
+var TerminalManager = class {
+  constructor() {
+    this.sessions = /* @__PURE__ */ new Map();
+    // Persist history for Normal mode sessions by ID
+    this.normalModeHistory = /* @__PURE__ */ new Map();
+    this.MAX_HISTORY_LINES = 1e3;
+    this._onReady = () => {
+    };
+  }
+  // Register a callback for when a session is ready
+  onReady(callback) {
+    this._onReady = callback;
+  }
+  clearHistory(id) {
+    const session = this.sessions.get(id);
+    if (session) {
+      session.history = [];
+    }
+    this.normalModeHistory.set(id, []);
+  }
+  isSessionReady(id) {
+    return this.sessions.get(id)?.isReady || false;
+  }
+  async getOrCreateSession(id, cwd, useYolo = false) {
+    let sessionWrapper = this.sessions.get(id);
+    if (sessionWrapper && sessionWrapper.useYolo !== useYolo) {
+      console.log(`[TerminalManager] YOLO mode changed for session ${id}. Restarting...`);
+      this.terminateSession(id);
+      sessionWrapper = void 0;
+    }
+    if (!sessionWrapper) {
+      console.log(`[TerminalManager] Creating new session for project: ${cwd} (useYolo: ${useYolo})`);
+      await ToolManager.ensureTools();
+      console.log(`[TerminalManager] Spawning shell: ${shell} in verified CWD: ${cwd}`);
+      const ptyProcess = pty.spawn(shell, [], {
+        name: "xterm-color",
+        cols: 80,
+        rows: 24,
+        cwd,
+        env: { ...process.env }
+      });
+      let historyArray = [];
+      if (!this.normalModeHistory.has(id)) {
+        this.normalModeHistory.set(id, []);
+      }
+      historyArray = this.normalModeHistory.get(id);
+      if (!this.normalModeHistory.has(id)) {
+        this.normalModeHistory.set(id, []);
+      }
+      historyArray = this.normalModeHistory.get(id);
+      const readyMarkers = [
+        "Welcome back",
+        "Visual Dev",
+        // If we have a custom banner
+        'Try "',
+        // Suggestion text (generic)
+        "bypass permissions",
+        "\u276F",
+        // The prompt character often used by Claude Code
+        "/model to try",
+        // Hint text often present at startup
+        "> "
+        // Standard prompt fallback
+      ];
+      sessionWrapper = {
+        pty: ptyProcess,
+        history: historyArray,
+        useYolo,
+        isReady: false
+      };
+      ptyProcess.onData((data) => {
+        if (sessionWrapper) {
+          sessionWrapper.history.push(data);
+          if (sessionWrapper.history.length > this.MAX_HISTORY_LINES) {
+            sessionWrapper.history.shift();
+          }
+          if (!sessionWrapper.isReady) {
+            const cleanData = data.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "");
+            console.log(`[TerminalManager] Chunk: ${JSON.stringify(data.substring(0, 50))}... Clean: ${JSON.stringify(cleanData.substring(0, 50))}...`);
+            const hasMarker = readyMarkers.some((marker) => cleanData.includes(marker) || data.includes(marker));
+            if (hasMarker) {
+              sessionWrapper.isReady = true;
+              console.log(`[TerminalManager] Session ${id} is READY. Match found.`);
+              this._onReady(id);
+            }
+          }
+        }
+      });
+      ptyProcess.onExit(({ exitCode, signal }) => {
+        console.log(`[TerminalManager] Session ${id} exited with code ${exitCode}, signal ${signal}`);
+        if (this.sessions.get(id) === sessionWrapper) {
+          this.sessions.delete(id);
+        }
+      });
+      this.sessions.set(id, sessionWrapper);
+      const launchCmd = useYolo ? "ccr code --dangerously-skip-permissions" : "ccr code";
+      console.log(`[TerminalManager] Launching: ${launchCmd}`);
+      ptyProcess.write(`${launchCmd}\r`);
+    } else {
+    }
+    return sessionWrapper.pty;
+  }
+  sendData(id, data) {
+    const session = this.sessions.get(id);
+    if (session) {
+      session.pty.write(data);
+    }
+  }
+  resize(id, cols, rows) {
+    const session = this.sessions.get(id);
+    if (session) {
+      try {
+        session.pty.resize(cols, rows);
+      } catch (e) {
+        console.error("[TerminalManager] Resize error:", e);
+      }
+    }
+  }
+  terminateSession(id) {
+    const session = this.sessions.get(id);
+    if (session) {
+      const pid = session.pty.pid;
+      this.sessions.delete(id);
+      try {
+        if (os.platform() !== "win32") {
+          try {
+            process.kill(-pid, "SIGKILL");
+          } catch (e) {
+            if (e.code !== "ESRCH") {
+              console.warn(`[TerminalManager] Failed to kill process group ${pid}, falling back to pty.kill:`, e);
+              session.pty.kill("SIGKILL");
+            }
+          }
+        } else {
+          session.pty.kill();
+        }
+      } catch (e) {
+        console.error("[TerminalManager] Kill error:", e);
+      }
+    }
+  }
+  getHistory(id) {
+    const session = this.sessions.get(id);
+    if (session) {
+      return session.history.join("");
+    }
+    const history = this.normalModeHistory.get(id);
+    return history ? history.join("") : "";
+  }
+};
+
 // src/server/WebSocketServer.ts
 var VDevWebSocketServer = class {
   constructor(port = 9527) {
     this.runners = /* @__PURE__ */ new Map();
+    this.terminalManager = new TerminalManager();
+    // Mapping from sessionId (projectPath hash) to connected clients
+    this.sessionClients = /* @__PURE__ */ new Map();
+    // Track which sessions strictly have listeners attached to avoid duplicates
+    this.attachedSessions = /* @__PURE__ */ new Set();
+    // Track which PTYs we are currently listening to, to handle restarts (Swap PTY)
+    this.activePtys = /* @__PURE__ */ new Map();
     this.wss = new WebSocketServer({ port });
     this.wss.on("connection", this.handleConnection.bind(this));
+    this.terminalManager.onReady((sessionId) => {
+      console.log(`[VDev Bridge] Session ${sessionId} is ready. Broadcasting to clients...`);
+      this.broadcastToSession(sessionId, {
+        type: "TERMINAL_READY",
+        id: "broadcast",
+        payload: { sessionId }
+      });
+    });
     console.log(`[VDev Bridge] WebSocket server running on ws://localhost:${port}`);
+  }
+  getSessionId(projectPath) {
+    return crypto.createHash("md5").update(projectPath).digest("hex");
   }
   handleConnection(ws) {
     console.log("[VDev Bridge] Client connected");
     const clientId = Math.random().toString(36).substring(7);
+    const subscribedSessions = /* @__PURE__ */ new Set();
     ws.on("message", async (data) => {
       try {
         const message = JSON.parse(data.toString());
         switch (message.type) {
           case "EXECUTE_TASK":
-            await this.handleExecuteTask(ws, message, clientId);
+            await this.handleExecuteTask(ws, message, clientId, subscribedSessions);
             break;
           case "CANCEL_TASK":
             this.handleCancelTask(ws, message, clientId);
@@ -309,6 +390,20 @@ var VDevWebSocketServer = class {
             break;
           case "RESOLVE_PROJECT_PATH":
             await this.handleResolveProjectPath(ws, message);
+            break;
+          case "TERMINAL_DATA":
+            await this.handleTerminalData(ws, message, subscribedSessions);
+            break;
+          case "TERMINAL_RESIZE":
+            this.handleTerminalResize(message);
+            break;
+          // @ts-ignore - Handle new message type
+          case "TERMINAL_INIT":
+            await this.handleTerminalInit(ws, message, subscribedSessions);
+            break;
+          // @ts-ignore - Handle new message type
+          case "TERMINAL_RESET":
+            this.handleTerminalReset(message);
             break;
         }
       } catch (error) {
@@ -322,19 +417,111 @@ var VDevWebSocketServer = class {
         runner.cancel();
         this.runners.delete(clientId);
       }
+      for (const sessionId of subscribedSessions) {
+        const clients = this.sessionClients.get(sessionId);
+        if (clients) {
+          clients.delete(ws);
+          if (clients.size === 0) {
+            this.sessionClients.delete(sessionId);
+          }
+        }
+      }
     });
   }
-  async handleExecuteTask(ws, message, clientId) {
+  async ensureSession(sessionId, projectPath, useYolo = false) {
+    const sessionPty = await this.terminalManager.getOrCreateSession(sessionId, projectPath, useYolo);
+    const lastPty = this.activePtys.get(sessionId);
+    if (lastPty !== sessionPty) {
+      console.log(`[VDev Bridge] Attaching listener to new PTY for session ${sessionId}`);
+      sessionPty.onData((data) => {
+        this.broadcastToSession(sessionId, data);
+      });
+      this.activePtys.set(sessionId, sessionPty);
+    }
+  }
+  subscribeToSession(ws, sessionId, subscribedSessions) {
+    const currentSessions = Array.from(subscribedSessions);
+    for (const oldSessionId of currentSessions) {
+      if (oldSessionId !== sessionId) {
+        console.log(`[VDev Bridge] Unsubscribing client from old session: ${oldSessionId}`);
+        const oldClients = this.sessionClients.get(oldSessionId);
+        if (oldClients) {
+          oldClients.delete(ws);
+          if (oldClients.size === 0) {
+            this.sessionClients.delete(oldSessionId);
+          }
+        }
+        subscribedSessions.delete(oldSessionId);
+      }
+    }
+    if (!subscribedSessions.has(sessionId)) {
+      console.log(`[VDev Bridge] Subscribing client to new session: ${sessionId}`);
+      if (!this.sessionClients.has(sessionId)) {
+        this.sessionClients.set(sessionId, /* @__PURE__ */ new Set());
+      }
+      this.sessionClients.get(sessionId)?.add(ws);
+      subscribedSessions.add(sessionId);
+    }
+  }
+  broadcastToSession(sessionId, messageOrData) {
+    const clients = this.sessionClients.get(sessionId);
+    if (clients && clients.size > 0) {
+      let payload;
+      if (typeof messageOrData === "string") {
+        payload = JSON.stringify({
+          type: "TERMINAL_OUTPUT",
+          id: "stream",
+          payload: { data: messageOrData }
+        });
+      } else {
+        payload = JSON.stringify(messageOrData);
+      }
+      for (const client of clients) {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(payload);
+        }
+      }
+    }
+  }
+  async handleTerminalInit(ws, message, subscribedSessions) {
+    const payload = message.payload;
+    const { projectPath, useYolo } = payload;
+    if (!projectPath) return;
+    console.log(`[VDev Bridge] Initializing terminal for ${projectPath}`);
+    const sessionId = this.getSessionId(projectPath);
+    this.subscribeToSession(ws, sessionId, subscribedSessions);
+    await this.ensureSession(sessionId, projectPath, !!useYolo);
+    const history = this.terminalManager.getHistory(sessionId);
+    if (history) {
+      this.send(ws, {
+        type: "TERMINAL_OUTPUT",
+        id: message.id,
+        // Response to INIT
+        payload: { data: history }
+      });
+    }
+    if (this.terminalManager.isSessionReady(sessionId)) {
+      console.log(`[VDev Bridge] Session ${sessionId} is already READY. Notifying client.`);
+      this.send(ws, {
+        type: "TERMINAL_READY",
+        id: message.id,
+        payload: { sessionId }
+      });
+    }
+  }
+  async handleExecuteTask(ws, message, clientId, subscribedSessions) {
     const payload = message.payload;
     const { source, instruction, projectPath: extensionProvidedPath } = payload;
     const projectPath = deriveProjectPathFromSource(source.fileName) || extensionProvidedPath;
-    console.log(`[VDev Bridge] Executing task for ${projectPath}`);
-    console.log(`[VDev Bridge] Target: ${source.fileName}:${source.lineNumber}`);
-    console.log(`[VDev Bridge] Instruction: ${instruction.slice(0, 100)}...`);
+    const sessionId = this.getSessionId(projectPath);
+    console.log(`[VDev Bridge] Executing task for ${projectPath} (Session: ${sessionId})`);
+    this.subscribeToSession(ws, sessionId, subscribedSessions);
+    await this.ensureSession(sessionId, projectPath, false);
     this.send(ws, {
       type: "TASK_STARTED",
       id: message.id,
-      payload: { status: "running" }
+      payload: { status: "running" },
+      projectPath
     });
     const runner = new ClaudeCodeRunner();
     this.runners.set(clientId, runner);
@@ -348,22 +535,28 @@ var VDevWebSocketServer = class {
           this.send(ws, {
             type: "TASK_LOG",
             id: message.id,
-            payload: { log }
+            payload: { log },
+            projectPath
           });
-        }
+        },
+        terminalManager: this.terminalManager,
+        sessionId
+        // Use persistent session ID
       });
       console.log(`[VDev Bridge] Task completed. Files modified: ${result.filesModified.join(", ")}`);
       this.send(ws, {
         type: "TASK_COMPLETED",
         id: message.id,
-        payload: result
+        payload: result,
+        projectPath
       });
     } catch (error) {
       console.error("[VDev Bridge] Task error:", error);
       this.send(ws, {
         type: "TASK_ERROR",
         id: message.id,
-        payload: { error: error.message }
+        payload: { error: error.message },
+        projectPath
       });
     } finally {
       this.runners.delete(clientId);
@@ -410,6 +603,36 @@ var VDevWebSocketServer = class {
       id: message.id,
       payload: { projectPath }
     });
+  }
+  async handleTerminalData(ws, message, subscribedSessions) {
+    const payload = message.payload;
+    if (!payload) return;
+    const { data, projectPath, useYolo } = payload;
+    if (projectPath) {
+      const sessionId = this.getSessionId(projectPath);
+      this.subscribeToSession(ws, sessionId, subscribedSessions);
+      await this.ensureSession(sessionId, projectPath, !!useYolo);
+      if (data) {
+        this.terminalManager.sendData(sessionId, data);
+      }
+    }
+  }
+  handleTerminalResize(message) {
+    const payload = message.payload;
+    if (payload && payload.projectPath) {
+      const sessionId = this.getSessionId(payload.projectPath);
+      this.terminalManager.resize(sessionId, payload.cols, payload.rows);
+    }
+  }
+  handleTerminalReset(message) {
+    const payload = message.payload;
+    if (payload && payload.projectPath) {
+      const sessionId = this.getSessionId(payload.projectPath);
+      console.log(`[VDev Bridge] RESETTING session for ${payload.projectPath} (Session: ${sessionId})`);
+      this.terminalManager.terminateSession(sessionId);
+      this.terminalManager.clearHistory(sessionId);
+      this.activePtys.delete(sessionId);
+    }
   }
   send(ws, message) {
     if (ws.readyState === WebSocket.OPEN) {
