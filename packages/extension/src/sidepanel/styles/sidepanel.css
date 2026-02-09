@@ -288,6 +288,19 @@ body {
 }
 
 /* Settings Panel */
+.settings-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--vdev-bg);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+
 .settings-panel .settings-content {
   flex: 1;
   overflow-y: auto;
@@ -322,10 +335,12 @@ body {
 .setting-input-row {
   display: flex;
   gap: 8px;
+  width: 100%;
 }
 
 .setting-input-row input {
   flex: 1;
+  min-width: 0;
   padding: 8px 12px;
   border: 1px solid var(--vdev-border);
   border-radius: 6px;
@@ -347,6 +362,7 @@ body {
   color: white;
   font-size: 13px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .setting-input-row button:hover {

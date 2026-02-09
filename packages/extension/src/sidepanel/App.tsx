@@ -604,6 +604,7 @@ const App: React.FC = () => {
                                 projectPath={path}
                                 isActive={path === projectPath}
                                 useYolo={useYolo}
+                                globalStatus={status} // Pass global status for sync
                             />
                         ))}
                     </div>

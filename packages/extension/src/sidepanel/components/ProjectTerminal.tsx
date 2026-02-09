@@ -2,16 +2,20 @@ import React, { useRef, useEffect, useState } from 'react';
 import { TerminalPanel, TerminalPanelHandle } from './TerminalPanel';
 import { useWebSocket } from '../hooks/useWebSocket';
 
+import { ConnectionStatus } from '../../shared/types';
+
 interface ProjectTerminalProps {
     projectPath: string;
     isActive: boolean;
     useYolo: boolean;
+    globalStatus?: ConnectionStatus; // Passed from App
 }
 
 export const ProjectTerminal: React.FC<ProjectTerminalProps> = ({
     projectPath,
     isActive,
-    useYolo
+    useYolo,
+    globalStatus
 }) => {
     const terminalRef = useRef<TerminalPanelHandle>(null);
     const [isTerminalReady, setIsTerminalReady] = useState(false);
@@ -38,17 +42,28 @@ export const ProjectTerminal: React.FC<ProjectTerminalProps> = ({
 
     // Auto-connect on mount
     useEffect(() => {
+        console.log(`[ProjectTerminal] Mount connect for ${projectPath}`);
         connect();
         // No disconnect on unmount? 
         // We WANT to keep it alive if we are just hiding it?
         // Actually, if this component is unmounted (e.g. user closes tab or we clear cache), 
         // useWebSocket's cleanup will disconnect.
         // But in App.tsx we will keep this rendered but hidden.
-    }, [connect]);
+    }, [connect, projectPath]);
+
+    // Sync with global status: If global becomes connected and we are disconnected, try connecting
+    useEffect(() => {
+        if (globalStatus === 'connected' && status === 'disconnected') {
+            console.log(`[ProjectTerminal] Global is connected but local is disconnected. Retrying connect for ${projectPath}...`);
+            connect();
+        }
+    }, [globalStatus, status, connect, projectPath]);
 
     // Initialize terminal when connected
     useEffect(() => {
         if (status === 'connected') {
+            terminalRef.current?.clear(); // Clear display first
+            console.log(`[ProjectTerminal] Connected! Initializing terminal for ${projectPath}`);
             setIsTerminalReady(false); // Reset readiness on init/reconnect
             // Initialize the PTY on the server
             // Note: server will attach listener if not already attached

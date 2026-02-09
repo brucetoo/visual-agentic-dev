@@ -47,12 +47,20 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     }, []);
 
     const connect = useCallback(() => {
+        // Check actual socket state to determine if we should connect
+        if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+            console.log('[useWebSocket] Already connected or connecting');
+            return;
+        }
+
+        console.log('[useWebSocket] Connecting to', WS_URL, 'Example ProjectPath:', projectPathRef.current);
         setStatus('connecting');
 
         const ws = new WebSocket(WS_URL);
         wsRef.current = ws;
 
         ws.onopen = () => {
+            console.log('[useWebSocket] Connected');
             setStatus('connected');
             addMessage('system', '✅ 已连接到 Bridge Server');
         };
@@ -74,8 +82,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
                     break;
 
                 case 'TASK_COMPLETED':
-                    // We don't really have a completion event from terminal easily, 
-                    // but the server sends this after writing to pty.
                     break;
 
                 case 'PROJECT_PATH_RESOLVED':
@@ -97,14 +103,21 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
             }
         };
 
-        ws.onerror = () => {
+        ws.onerror = (e) => {
+            console.error('[useWebSocket] Connection error:', e);
             setStatus('error');
             addMessage('system', '❌ 连接错误');
         };
 
-        ws.onclose = () => {
-            setStatus('disconnected');
-            wsRef.current = null;
+        ws.onclose = (e) => {
+            console.log('[useWebSocket] Connection closed', e.code, e.reason);
+            // Only update status if this hook instance's socket is the one closing
+            // (Though wsRef.current should match unless a new connection started?)
+            if (wsRef.current === ws) {
+                setStatus('disconnected');
+                wsRef.current = null;
+            }
+
             // Reject all pending resolves
             for (const pending of pendingResolvesRef.current.values()) {
                 pending.reject(new Error('WebSocket closed'));
