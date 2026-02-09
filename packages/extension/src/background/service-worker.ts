@@ -25,6 +25,20 @@ function getOrigin(url: string | undefined): string | null {
     }
 }
 
+// Helper to inject content script
+async function injectContentScript(tabId: number) {
+    try {
+        await chrome.scripting.executeScript({
+            target: { tabId },
+            files: ['content/content-script.js']
+        });
+        console.log(`[VDev] Injected content script into tab ${tabId}`);
+    } catch (err) {
+        // Ignore errors if script is already there (though our guard handles logic, Chrome might still throw if frame is weird)
+        console.log(`[VDev] Note: Script injection attempt on ${tabId}: ${err}`);
+    }
+}
+
 // Open side panel when extension icon is clicked
 chrome.action.onClicked.addListener(async (tab) => {
     if (!tab.id || !tab.url) return;
@@ -43,6 +57,7 @@ chrome.action.onClicked.addListener(async (tab) => {
             console.error('[VDev] Error opening sidepanel:', error);
         }
     } else {
+        // ... existing non-localhost logic ...
         // Non-localhost: show notification badge
         try {
             await chrome.action.setBadgeText({ text: '!', tabId: tab.id });
@@ -134,7 +149,22 @@ chrome.commands.onCommand.addListener(async (command) => {
 });
 
 // Log when extension is installed
-chrome.runtime.onInstalled.addListener(() => {
+// Log when extension is installed
+chrome.runtime.onInstalled.addListener(async () => {
     console.log('[VDev Extension] Installed');
+
+    // Inject content script into existing tabs
+    try {
+        // Query all tabs and filter manually to be safe about port matching
+        const tabs = await chrome.tabs.query({});
+
+        for (const tab of tabs) {
+            if (tab.id && tab.url && isLocalhostUrl(tab.url)) {
+                await injectContentScript(tab.id);
+            }
+        }
+    } catch (error) {
+        console.error('[VDev] Error injecting content scripts on install:', error);
+    }
 });
 

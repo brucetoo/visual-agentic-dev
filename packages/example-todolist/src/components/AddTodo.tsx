@@ -30,14 +30,14 @@ export function AddTodo({ onAdd, onInvertAll }: AddTodoProps) {
                 <button
                     type="submit"
                     className="add-todo-button"
-                    style={{ backgroundImage: "linear-gradient(135deg, #ff6b6b, #feca57)" }}
+                    style={{ backgroundImage: "linear-gradient(135deg, #ff9a9e, #fad0c4)" }}
                 >
                     提交
                 </button>
                 <button
                     type="button"
                     className="add-todo-button"
-                    style={{ marginLeft: 8, backgroundImage: "linear-gradient(135deg, #54a0ff, #5f27cd)" }}
+                    style={{ marginLeft: 8, backgroundImage: "linear-gradient(135deg, #48c6ef, #6f86d6)" }}
                     onClick={() => {
                         onInvertAll();
                         setShowModal(true);
