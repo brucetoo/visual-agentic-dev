@@ -21,6 +21,10 @@ export const TerminalPanel = forwardRef<TerminalPanelHandle, TerminalPanelProps>
         const xtermRef = useRef<Terminal | null>(null);
         const fitAddonRef = useRef<FitAddon | null>(null);
 
+        // Throttling refs
+        const lastResizeTimeRef = useRef<number>(0);
+        const resizeTimeoutRef = useRef<any>(null);
+
         useImperativeHandle(ref, () => ({
             write: (data: string) => {
                 xtermRef.current?.write(data);
@@ -68,9 +72,8 @@ export const TerminalPanel = forwardRef<TerminalPanelHandle, TerminalPanelProps>
                 onBinaryDataRef.current(data);
             });
 
-            term.onResize(({ cols, rows }: { cols: number; rows: number }) => {
-                onResize(cols, rows);
-            });
+            // term.onResize removed to prevent duplicate/undebounced calls.
+            // onResize prop is now called debounced inside handleFit.
 
             return () => {
                 term.dispose();
@@ -81,41 +84,48 @@ export const TerminalPanel = forwardRef<TerminalPanelHandle, TerminalPanelProps>
         useEffect(() => {
             if (!terminalRef.current || !xtermRef.current || !fitAddonRef.current) return;
 
+
             const handleFit = () => {
-                if (isActive && terminalRef.current) {
+                if (isActive && terminalRef.current && xtermRef.current && fitAddonRef.current) {
                     const width = terminalRef.current.clientWidth;
                     const height = terminalRef.current.clientHeight;
 
-                    console.log(`[TerminalPanel] handleFit triggered. isActive=${isActive}, Size=${width}x${height}`);
-
                     if (width > 0 && height > 0) {
                         try {
-                            fitAddonRef.current?.fit();
-                            const { cols, rows } = xtermRef.current!;
-                            console.log(`[TerminalPanel] fitted to ${cols}x${rows}`);
-                            onResize(cols, rows);
+                            // 1. Immediate Frontend Resize (Visual Fluidity)
+                            fitAddonRef.current.fit();
+                            const { cols, rows } = xtermRef.current;
 
-                            // Aggressive Focus Logic
-                            console.log('[TerminalPanel] Attempting focus...');
-                            xtermRef.current?.focus();
+                            // 2. Throttled Backend Notification (Data Consistnecy)
+                            // We want to send updates *during* drag, not just after.
+                            const now = Date.now();
+                            const timeSinceLast = now - lastResizeTimeRef.current;
+                            const THROTTLE_MS = 60; // ~16fps updates to backend
 
-                            // Check if focus succeeded
-                            setTimeout(() => {
-                                const active = document.activeElement;
-                                const isFocused = terminalRef.current?.contains(active) || active?.className?.includes('xterm');
-                                console.log('[TerminalPanel] Focus check after 50ms:', isFocused ? 'SUCCESS' : 'FAILED', active);
-
-                                if (!isFocused) {
-                                    console.log('[TerminalPanel] Retry focus...');
-                                    xtermRef.current?.focus();
+                            if (timeSinceLast >= THROTTLE_MS) {
+                                // Execute immediately
+                                if (resizeTimeoutRef.current) {
+                                    clearTimeout(resizeTimeoutRef.current);
+                                    resizeTimeoutRef.current = null;
                                 }
-                            }, 50);
+                                console.log(`[TerminalPanel] Throttled resize send: ${cols}x${rows}`);
+                                onResize(cols, rows);
+                                lastResizeTimeRef.current = now;
+                            } else {
+                                // Schedule trailing edge (ensure final size is always sent)
+                                if (!resizeTimeoutRef.current) {
+                                    resizeTimeoutRef.current = setTimeout(() => {
+                                        console.log(`[TerminalPanel] Trailing resize send: ${cols}x${rows}`);
+                                        onResize(cols, rows);
+                                        lastResizeTimeRef.current = Date.now();
+                                        resizeTimeoutRef.current = null;
+                                    }, THROTTLE_MS - timeSinceLast + 10);
+                                }
+                            }
 
                         } catch (e) {
                             console.error('[TerminalPanel] Fit error:', e);
                         }
-                    } else {
-                        console.warn('[TerminalPanel] Skipping fit - container has 0 dimensions');
                     }
                 }
             };
@@ -141,9 +151,11 @@ export const TerminalPanel = forwardRef<TerminalPanelHandle, TerminalPanelProps>
 
             return () => {
                 resizeObserver.disconnect();
+                if (resizeTimeoutRef.current) {
+                    clearTimeout(resizeTimeoutRef.current);
+                }
             };
-        }, [isActive]); // Re-run when active state changes
-
+        }, [isActive, onResize]); // Re-run when active state changes or onResize prop changes
         // Handle Ready State Focus
         const isReadyRef = useRef(isReady);
         useEffect(() => {

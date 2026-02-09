@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { TerminalPanel, TerminalPanelHandle } from './TerminalPanel';
 import { useWebSocket } from '../hooks/useWebSocket';
 
@@ -108,12 +108,12 @@ export const ProjectTerminal: React.FC<ProjectTerminalProps> = ({
             <TerminalPanel
                 ref={terminalRef}
                 onBinaryData={(data) => sendTerminalData(data, projectPath, useYolo)}
-                onResize={(cols, rows) => {
+                onResize={useCallback((cols: number, rows: number) => {
                     // Only send resize if we are actually visible/active to avoid zero-size issues
                     if (isActive) {
                         sendTerminalResize(cols, rows, projectPath);
                     }
-                }}
+                }, [isActive, sendTerminalResize, projectPath])}
                 isReady={isTerminalReady}
                 isActive={isActive}
             />
