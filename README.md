@@ -1,15 +1,15 @@
 # Visual Agentic Dev
 
-An immersive browser development environment that allows developers to click on React elements in the browser, describe requirements via a sidebar chat, and have Claude Code CLI automatically execute code modifications.
+An immersive browser development environment that allows developers to click on React elements in the browser, describe requirements via a sidebar chat, and have Agentic CLI automatically execute code modifications.
 
 ## Core Features
 
 - 🎯 **Zero-Config Source Location**: Utilizes React Fiber to automatically identify source code locations without inserting redundant attributes into business code.
-- 📂 **Multi-Project Parallel Development**: Automatically identifies the project belonging to the current Tab and intelligently switches to the corresponding terminal session, supporting simultaneous development of multiple micro-frontend applications.
-- 🖱️ **Batch Element Modification**: Supports selecting multiple page elements and sending them to Claude Code for batch modification in one go.
-- ⌨️ **Convenient Shortcuts**: Quickly enter element selection mode via `Cmd + Shift + S` (Mac) or `Ctrl + Shift + S` (Windows/Linux).
-- 🚀 **Smart Sidebar**: Sidebar state is bound to the project; switching Tabs automatically restores the context and terminal history for that project.
-- 🛠 **Built-in Terminal Integration**: Run Claude Code directly in the sidebar without frequent window switching, providing an immersive AI pair programming experience.
+- 📂 **Multi-Project Parallel Development**: Automatically identifies the project belonging to the current Tab and intelligently switches to the corresponding terminal session.
+- 🤖 **Dynamic Agent Registry**: Extensible architecture supporting multiple AI agents (Claude Code, CCR, etc.) with dynamic readiness detection.
+- 🖱️ **Batch Element Modification**: Supports selecting multiple page elements and sending them to the agent for batch modification.
+- ⌨️ **Convenient Shortcuts**: Quick access via `Cmd + Shift + S` (Mac) or `Ctrl + Shift + S` (Windows/Linux).
+- 🛠 **Built-in Terminal Integration**: Deeply integrated terminal with session persistence, history restoration, and smart context switching.
 
 ## Demo
 ![alt text](image-1.png)
@@ -65,9 +65,13 @@ function App() {
 3. Click "Load unpacked"
 4. Select the `packages/extension/dist` directory
 
-### 6. Configure Claude Code CLI
+### 6. Configure Agent
 
-Ensure your system has correctly configured the Claude Code CLI
+1. Open the extension sidebar.
+2. Click the **Settings** (⚙️) icon.
+3. Select your preferred agent (e.g., `ccr code` or `claude`).
+4. The terminal session will automatically reset and switch to the selected agent.
+
 
 ### 7. Get Started
 

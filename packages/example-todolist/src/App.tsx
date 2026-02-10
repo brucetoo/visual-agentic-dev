@@ -11,6 +11,7 @@ function App() {
         { id: 1, text: 'Integrate Visual Agentic Dev Tool', completed: true },
         { id: 2, text: 'Verify babel plugin', completed: false },
         { id: 3, text: 'Test element positioning function', completed: false },
+        { id: 4, text: "hey it's new one", completed: false },
     ]);
 
     const addTodo = (text: string) => {

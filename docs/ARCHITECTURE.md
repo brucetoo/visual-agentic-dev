@@ -4,7 +4,7 @@
 
 Visual Agentic Dev is an **immersive browser development environment** designed to allow developers to complete code modifications, debugging, and command-line interactions **without leaving the browser**.
 
-The core concept seamlesslessly maps local development environment capabilities (Terminal/CLI) to the browser sidebar via a **Bridge Server**. Currently, it not only supports standard terminal operations but also deeply integrates **Claude Code CLI**, enabling a "Click Element -> AI Automatically Modifies Code" closed-loop workflow. Future extensions may support more CLI tools (such as Gemini CLI, OpenCodex CLI, etc.).
+The core concept seamlesslessly maps local development environment capabilities (Terminal/CLI) to the browser sidebar via a **Bridge Server**. It supports **Dynamic Agent Registration**, allowing deep integration with **Claude Code**, **CCR**, and future AI CLI tools. The system enables a "Click Element -> AI Automatically Modifies Code" closed-loop workflow with real-time terminal feedback.
 
 ---
 
@@ -121,9 +121,12 @@ packages/bridge-server/
 ├── src/
 │   ├── server/
 │   │   └── WebSocketServer.ts # WebSocket Service + Message Routing
+│   ├── utils/
+│   │   ├── TerminalManager.ts # PTY Session Management
+│   │   ├── AgentRegistry.ts   # Dynamic Agent Configuration
+│   │   └── ToolManager.ts     # Tool Availability Check
 │   ├── claude/
-│   │   ├── ClaudeCodeRunner.ts  # Execute Claude CLI
-│   │   └── PromptBuilder.ts     # Build Code Modification Prompts
+│   │   └── PromptBuilder.ts   # Build Code Modification Prompts
 │   └── types.ts
 ├── bin/
 │   └── vdev-server.js         # CLI Entry Point
@@ -139,7 +142,8 @@ packages/bridge-server/
 | `TASK_STARTED` | Server → Client | Task started |
 | `TASK_PROGRESS` | Server → Client | Streaming output progress |
 | `TASK_COMPLETED` | Server → Client | Task completed |
-| `TERMINAL_DATA` | Client ↔ Server | Terminal input/output stream (must include projectPath) |
+| `TERMINAL_INIT` | Client → Server | Initialize terminal with project path and agent config |
+| `TERMINAL_DATA` | Client ↔ Server | Terminal input/output stream (includes `agentCommand`) |
 | `TERMINAL_RESIZE` | Client → Server | Terminal resize |
 | `RESOLVE_PROJECT_PATH` | Client → Server | Resolve project path based on port number |
 
@@ -248,7 +252,7 @@ sequenceDiagram
 | Compilation Plugin | Vite Plugin / Babel 7 (Alternative) |
 | Bridge Server | Node.js + ws |
 | Chrome Extension | Vite + React + Manifest V3 |
-| AI Backend | Claude Code CLI (ccr proxy) |
+| AI Backend | **Dynamic Agent (CCR / Claude / etc)** |
 
 ---
 
@@ -283,6 +287,13 @@ sequenceDiagram
     2. Wait 50ms: Allow PTY to fully process interrupt signal and flush buffer (prevent Race Condition).
     3. Send new instruction: Ensure instruction is entered on a clean Prompt.
 - **Deprecated Solutions**: Using only `Ctrl+U` (may not clear cleanly) or `Ctrl+L` (does not clear input line).
+
+### 6. Dynamic Agent Architecture
+- **Problem**: Different AI agents (Claude, CCR, future tools) have different startup commands and "readiness" indicators (prompts).
+- **Solution**: **Agent Registry Pattern**
+    - `AgentRegistry` stores configuration for each agent (command, readiness markers).
+    - `TerminalManager` dynamically looks up readiness logic based on the selected agent.
+    - Frontend `Settings` panel allows users to switch agents at runtime, triggering a seamless session handover.
 
 ---
 
