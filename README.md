@@ -86,4 +86,6 @@ Ensure your system has correctly configured the Claude Code CLI
 
 ## License
 
-Bruce Too
+© 2026 Bruce Too
+
+Licensed under PolyForm Shield 1.0.0
