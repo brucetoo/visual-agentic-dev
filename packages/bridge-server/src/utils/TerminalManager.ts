@@ -61,7 +61,12 @@ export class TerminalManager {
             console.log(`[TerminalManager] Creating new session for project: ${cwd} (useYolo: ${useYolo})`);
 
             // Ensure tools are installed before launching
-            await ToolManager.ensureTools();
+            try {
+                await ToolManager.ensureTools();
+            } catch (error) {
+                console.error(`[TerminalManager] Tool check failed: ${(error as Error).message}`);
+                throw error; // Re-throw to be handled by caller (WebSocketServer)
+            }
 
             console.log(`[TerminalManager] Spawning shell: ${shell} in verified CWD: ${cwd}`);
 

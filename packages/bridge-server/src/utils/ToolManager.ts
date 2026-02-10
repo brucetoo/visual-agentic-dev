@@ -24,40 +24,19 @@ export class ToolManager {
     }
 
     /**
-     * Attempts to install the missing tools
+     * Ensures tools are ready, throws error if missing
      */
-    static async installTools(): Promise<boolean> {
+    static async ensureTools(): Promise<boolean> {
         const { claude, ccr } = this.checkTools();
 
         if (claude && ccr) {
-            console.log('[ToolManager] All tools are already installed.');
             return true;
         }
 
-        try {
-            if (!claude) {
-                console.log('[ToolManager] Installing @anthropic-ai/claude-code...');
-                execSync('npm install -g @anthropic-ai/claude-code', { stdio: 'inherit' });
-            }
-            if (!ccr) {
-                console.log('[ToolManager] Installing @musistudio/claude-code-router...');
-                execSync('npm install -g @musistudio/claude-code-router', { stdio: 'inherit' });
-            }
-            return true;
-        } catch (error) {
-            console.error(`[ToolManager] Installation failed: ${(error as Error).message}`);
-            return false;
-        }
-    }
+        const missing = [];
+        if (!claude) missing.push('claude');
+        if (!ccr) missing.push('ccr');
 
-    /**
-     * Ensures tools are ready, installs if necessary
-     */
-    static async ensureTools(): Promise<boolean> {
-        const status = this.checkTools();
-        if (status.claude && status.ccr) return true;
-
-        console.log('[ToolManager] Some tools are missing. Attempting auto-installation...');
-        return await this.installTools();
+        throw new Error(`Missing required tools: ${missing.join(', ')}. Please install them manually.`);
     }
 }

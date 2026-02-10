@@ -100,6 +100,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
                     console.log('[useWebSocket] Received TERMINAL_READY');
                     onTerminalReadyRef.current?.();
                     break;
+                case 'TOOL_MISSING':
+                    alert(data.payload?.message || 'Missing required agent tools');
+                    break;
             }
         };
 

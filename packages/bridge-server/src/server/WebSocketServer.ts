@@ -121,6 +121,15 @@ export class VDevWebSocketServer {
         } catch (error) {
             console.error(`[VDev Bridge] Error ensuring session ${sessionId} for project ${projectPath}:`, error);
             const errorMessage = (error as Error).message || String(error);
+
+            if (errorMessage.includes('Missing required tools')) {
+                this.broadcastToSession(sessionId, {
+                    type: 'TOOL_MISSING',
+                    id: 'broadcast',
+                    payload: { message: errorMessage }
+                });
+            }
+
             this.broadcastToSession(sessionId, {
                 type: 'TERMINAL_OUTPUT',
                 id: 'broadcast',
