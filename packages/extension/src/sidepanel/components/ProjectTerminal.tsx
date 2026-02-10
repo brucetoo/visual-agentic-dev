@@ -8,6 +8,7 @@ interface ProjectTerminalProps {
     projectPath: string;
     isActive: boolean;
     useYolo: boolean;
+    agentCommand: string; // Added prop
     globalStatus?: ConnectionStatus; // Passed from App
 }
 
@@ -15,8 +16,10 @@ export const ProjectTerminal: React.FC<ProjectTerminalProps> = ({
     projectPath,
     isActive,
     useYolo,
+    agentCommand,
     globalStatus
 }) => {
+    console.log('[ProjectTerminal] Render with agentCommand:', agentCommand);
     const terminalRef = useRef<TerminalPanelHandle>(null);
     const [isTerminalReady, setIsTerminalReady] = useState(false);
 
@@ -43,21 +46,21 @@ export const ProjectTerminal: React.FC<ProjectTerminalProps> = ({
     // Auto-connect on mount
     useEffect(() => {
         console.log(`[ProjectTerminal] Mount connect for ${projectPath}`);
-        connect();
+        connect(projectPath, useYolo, agentCommand);
         // No disconnect on unmount? 
         // We WANT to keep it alive if we are just hiding it?
         // Actually, if this component is unmounted (e.g. user closes tab or we clear cache), 
         // useWebSocket's cleanup will disconnect.
         // But in App.tsx we will keep this rendered but hidden.
-    }, [connect, projectPath]);
+    }, [connect, projectPath, useYolo, agentCommand]);
 
     // Sync with global status: If global becomes connected and we are disconnected, try connecting
     useEffect(() => {
         if (globalStatus === 'connected' && status === 'disconnected') {
             console.log(`[ProjectTerminal] Global is connected but local is disconnected. Retrying connect for ${projectPath}...`);
-            connect();
+            connect(projectPath, useYolo, agentCommand);
         }
-    }, [globalStatus, status, connect, projectPath]);
+    }, [globalStatus, status, connect, projectPath, useYolo, agentCommand]);
 
     // Initialize terminal when connected
     useEffect(() => {
@@ -65,11 +68,9 @@ export const ProjectTerminal: React.FC<ProjectTerminalProps> = ({
             terminalRef.current?.clear(); // Clear display first
             console.log(`[ProjectTerminal] Connected! Initializing terminal for ${projectPath}`);
             setIsTerminalReady(false); // Reset readiness on init/reconnect
-            // Initialize the PTY on the server
-            // Note: server will attach listener if not already attached
-            sendTerminalInit(projectPath, useYolo);
+            // Initialize the PTY on the server is handled by useWebSocket.connect/onopen
         }
-    }, [status, projectPath, useYolo, sendTerminalInit]);
+    }, [status, projectPath]); // Removed useYolo, agentCommand, sendTerminalInit from dep array as connect handles them
 
     // Handle Resize - only if active? 
     // Or we should allow resize even if hidden? 
@@ -107,7 +108,7 @@ export const ProjectTerminal: React.FC<ProjectTerminalProps> = ({
             </div>
             <TerminalPanel
                 ref={terminalRef}
-                onBinaryData={(data) => sendTerminalData(data, projectPath, useYolo)}
+                onBinaryData={(data) => sendTerminalData(data, projectPath, useYolo, agentCommand)}
                 onResize={useCallback((cols: number, rows: number) => {
                     // Only send resize if we are actually visible/active to avoid zero-size issues
                     if (isActive) {
@@ -116,6 +117,7 @@ export const ProjectTerminal: React.FC<ProjectTerminalProps> = ({
                 }, [isActive, sendTerminalResize, projectPath])}
                 isReady={isTerminalReady}
                 isActive={isActive}
+                agentCommand={agentCommand}
             />
         </div>
     );

@@ -100,23 +100,32 @@ export class VDevWebSocketServer {
     }
 
     // Track which PTYs we are currently listening to, to handle restarts (Swap PTY)
-    private activePtys: Map<string, any> = new Map();
+    // Map<SessionId, { pty: IPty, disposable: IDisposable }>
+    private activePtys: Map<string, { pty: any, disposable: { dispose: () => void } }> = new Map();
 
-    private async ensureSession(sessionId: string, projectPath: string, useYolo: boolean = false): Promise<void> {
+    private async ensureSession(sessionId: string, projectPath: string, useYolo: boolean = false, agentCommand: string = 'ccr code'): Promise<void> {
         try {
             // We modify getOrCreateSession signature on the fly if needed, but here it's fine.
             // If YOLO mode changes, this returns a NEW pty object.
-            const sessionPty = await this.terminalManager.getOrCreateSession(sessionId, projectPath, useYolo);
+            const sessionPty = await this.terminalManager.getOrCreateSession(sessionId, projectPath, useYolo, agentCommand);
 
-            const lastPty = this.activePtys.get(sessionId);
+            const active = this.activePtys.get(sessionId);
 
             // If we haven't seen this PTY before (New session OR Restarted session), attach listener
-            if (lastPty !== sessionPty) {
+            if (!active || active.pty !== sessionPty) {
                 console.log(`[VDev Bridge] Attaching listener to new PTY for session ${sessionId}`);
-                sessionPty.onData((data: string) => {
+
+                // Cleanup old listener if exists
+                if (active) {
+                    console.log(`[VDev Bridge] Disposing old listener for session ${sessionId}`);
+                    active.disposable.dispose();
+                }
+
+                const disposable = sessionPty.onData((data: string) => {
                     this.broadcastToSession(sessionId, data);
                 });
-                this.activePtys.set(sessionId, sessionPty);
+
+                this.activePtys.set(sessionId, { pty: sessionPty, disposable });
             }
         } catch (error) {
             console.error(`[VDev Bridge] Error ensuring session ${sessionId} for project ${projectPath}:`, error);
@@ -199,7 +208,7 @@ export class VDevWebSocketServer {
         subscribedSessions: Set<string>
     ): Promise<void> {
         const payload = message.payload as any;
-        const { projectPath, useYolo } = payload;
+        const { projectPath, useYolo, agentCommand } = payload;
 
         if (!projectPath) return;
 
@@ -207,7 +216,7 @@ export class VDevWebSocketServer {
         const sessionId = this.getSessionId(projectPath);
 
         this.subscribeToSession(ws, sessionId, subscribedSessions);
-        await this.ensureSession(sessionId, projectPath, !!useYolo);
+        await this.ensureSession(sessionId, projectPath, !!useYolo, agentCommand);
 
         // Replay history
         const history = this.terminalManager.getHistory(sessionId);
@@ -235,8 +244,8 @@ export class VDevWebSocketServer {
         message: ClientMessage,
         subscribedSessions: Set<string>
     ): Promise<void> {
-        const payload = message.payload as { source: { fileName: string; lineNumber: number; columnNumber: number }; instruction: string; projectPath: string };
-        const { source, instruction, projectPath: extensionProvidedPath } = payload;
+        const payload = message.payload as { source: { fileName: string; lineNumber: number; columnNumber: number }; instruction: string; projectPath: string; agentCommand?: string };
+        const { source, instruction, projectPath: extensionProvidedPath, agentCommand } = payload;
 
         const projectPath = deriveProjectPathFromSource(source.fileName) || extensionProvidedPath;
         const sessionId = this.getSessionId(projectPath);
@@ -245,7 +254,7 @@ export class VDevWebSocketServer {
 
         // Ensure we are subscribed to output
         this.subscribeToSession(ws, sessionId, subscribedSessions);
-        await this.ensureSession(sessionId, projectPath, false);
+        await this.ensureSession(sessionId, projectPath, false, agentCommand);
 
         const prompt = PromptBuilder.build({ source, instruction });
 
@@ -296,13 +305,13 @@ export class VDevWebSocketServer {
         const payload = message.payload as TerminalDataPayload;
         if (!payload) return;
 
-        const { data, projectPath, useYolo } = payload;
+        const { data, projectPath, useYolo, agentCommand } = payload;
 
         if (projectPath) {
             const sessionId = this.getSessionId(projectPath);
             this.subscribeToSession(ws, sessionId, subscribedSessions);
             try {
-                await this.ensureSession(sessionId, projectPath, !!useYolo);
+                await this.ensureSession(sessionId, projectPath, !!useYolo, agentCommand);
                 if (data) {
                     this.terminalManager.sendData(sessionId, data);
                 }
@@ -346,7 +355,11 @@ export class VDevWebSocketServer {
             this.terminalManager.clearHistory(sessionId);
 
             // 3. Clear from active PTYs listener map
-            this.activePtys.delete(sessionId);
+            const active = this.activePtys.get(sessionId);
+            if (active) {
+                active.disposable.dispose();
+                this.activePtys.delete(sessionId);
+            }
 
             // 4. Force disconnect clients from this session? 
             // Maybe not needed, they will reconnect/re-init if page reloads.

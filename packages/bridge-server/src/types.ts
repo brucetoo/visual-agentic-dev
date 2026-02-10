@@ -15,6 +15,7 @@ export interface ExecuteTaskPayload {
     source: SourceLocation;
     instruction: string;
     projectPath: string;
+    agentCommand?: string;
 }
 
 export interface ResolveProjectPathPayload {
@@ -25,6 +26,7 @@ export interface TerminalDataPayload {
     data: string;
     projectPath?: string;
     useYolo?: boolean;
+    agentCommand?: string;
 }
 
 export interface TerminalResizePayload {

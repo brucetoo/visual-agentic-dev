@@ -46,14 +46,21 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         onMessageRef.current?.(role, content);
     }, []);
 
-    const connect = useCallback(() => {
-        // Check actual socket state to determine if we should connect
-        if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
-            console.log('[useWebSocket] Already connected or connecting');
+    const connect = useCallback((projectPath: string = '', useYolo: boolean = false, agentCommand: string = 'ccr code') => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            // Already connected, just init session
+            sendTerminalInit(projectPath, useYolo, agentCommand);
+            projectPathRef.current = projectPath;
             return;
         }
 
-        console.log('[useWebSocket] Connecting to', WS_URL, 'Example ProjectPath:', projectPathRef.current);
+        // Check actual socket state to determine if we should connect
+        if (wsRef.current && wsRef.current.readyState === WebSocket.CONNECTING) {
+            console.log('[useWebSocket] Already connecting');
+            return;
+        }
+
+        console.log('[useWebSocket] Connecting to', WS_URL, 'Example ProjectPath:', projectPath);
         setStatus('connecting');
 
         const ws = new WebSocket(WS_URL);
@@ -63,6 +70,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
             console.log('[useWebSocket] Connected');
             setStatus('connected');
             addMessage('system', '✅ Connected to Bridge Server');
+
+            // Init terminal session once connected
+            sendTerminalInit(projectPath, useYolo, agentCommand);
+            projectPathRef.current = projectPath;
         };
 
         ws.onmessage = (event) => {
@@ -182,23 +193,28 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         };
     }, []);
 
-    const sendTerminalData = useCallback((data: string, projectPath?: string, useYolo?: boolean) => {
+    const sendTerminalData = useCallback((data: string, projectPath?: string, useYolo?: boolean, agentCommand?: string) => {
         if (!wsRef.current || status !== 'connected') return;
 
         wsRef.current.send(JSON.stringify({
             type: 'TERMINAL_DATA',
             id: crypto.randomUUID(),
-            payload: { data, projectPath, useYolo },
+            payload: { data, projectPath, useYolo, agentCommand },
         }));
     }, [status]);
 
-    const sendTerminalInit = useCallback((projectPath: string, useYolo: boolean = false) => {
-        if (!wsRef.current || status !== 'connected') return;
+    const sendTerminalInit = useCallback((projectPath: string, useYolo: boolean = false, agentCommand: string = 'ccr code') => {
+        // Check readyState directly to allow calling from onopen handler where status state might lag
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+            console.warn('[useWebSocket] sendTerminalInit ignored - not open. Status:', status, 'ReadyState:', wsRef.current?.readyState);
+            return;
+        }
 
+        console.log('[useWebSocket] Sending TERMINAL_INIT', { projectPath, useYolo, agentCommand });
         wsRef.current.send(JSON.stringify({
             type: 'TERMINAL_INIT',
             id: crypto.randomUUID(),
-            payload: { projectPath, useYolo },
+            payload: { projectPath, useYolo, agentCommand },
         }));
     }, [status]);
 

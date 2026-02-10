@@ -48,6 +48,30 @@ const App: React.FC = () => {
     const [useYolo, setUseYolo] = useState(() => {
         return localStorage.getItem('vdev_yolo_mode') === 'true';
     });
+    const [agentCommand, setAgentCommand] = useState(() => {
+        const cmd = localStorage.getItem('vdev_agent_command') || 'ccr code';
+        console.log('[App] Initialized agentCommand:', cmd);
+        return cmd;
+    });
+
+    // Sync settings across tabs/windows
+    useEffect(() => {
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === 'vdev_agent_command') {
+                const newValue = e.newValue || 'ccr code';
+                console.log('[App] Syncing agentCommand from storage:', newValue);
+                // Force reload to ensure clean session state and prevent conflicts
+                window.location.reload();
+            } else if (e.key === 'vdev_yolo_mode') {
+                const newValue = e.newValue === 'true';
+                console.log('[App] Syncing useYolo from storage:', newValue);
+                setUseYolo(newValue);
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, []);
 
     // We NO LONGER manage a single terminalRef here. 
     // Each ProjectTerminal has its own ref.
@@ -302,8 +326,8 @@ const App: React.FC = () => {
 
     // Auto-connect on mount
     useEffect(() => {
-        connect();
-    }, [connect]);
+        connect(undefined, undefined, agentCommand);
+    }, [connect, agentCommand]);
 
     // Auto-detect project path when connected
     useEffect(() => {
@@ -493,11 +517,26 @@ const App: React.FC = () => {
             {showSettings && <Settings
                 projectPath={projectPath}
                 onProjectPathChange={handleProjectPathChange}
-                onConnect={connect}
+                onConnect={() => connect(projectPath, useYolo, agentCommand)}
                 onDisconnect={disconnect}
+                onResetSession={() => {
+                    if (projectPath) {
+                        sendTerminalReset(projectPath);
+                    }
+                    // Give WebSocket a moment to send the buffer before reloading
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                }}
                 status={status}
                 onClose={() => setShowSettings(false)}
                 isAutoDetected={isAutoDetected}
+            // Pass current value but we rely on localStorage update + reload for now
+            // Actually, Settings component has its own local state for agentCommand?
+            // No, Settings uses localStorage value as init, then internal state.
+            // We should probably lift state up or sync it.
+            // Settings component currently handles save by writing to localStorage and reloading.
+            // So this prop isn't strictly needed for the fix, but helps if we remove reload later.
             />}
 
 
@@ -522,7 +561,7 @@ const App: React.FC = () => {
                         ) : (
                             <button
                                 className="action-btn connect-btn"
-                                onClick={connect}
+                                onClick={() => connect(projectPath, useYolo, agentCommand)}
                                 title="Connect"
                             >
                                 🔗
@@ -604,6 +643,7 @@ const App: React.FC = () => {
                                 projectPath={path}
                                 isActive={path === projectPath}
                                 useYolo={useYolo}
+                                agentCommand={agentCommand}
                                 globalStatus={status} // Pass global status for sync
                             />
                         ))}

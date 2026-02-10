@@ -14,28 +14,32 @@ export class ToolManager {
     }
 
     /**
-     * Checks if both required tools are installed
+     * Checks if the required tool is installed.
+     * If command involves 'ccr', we also check 'claude'.
      */
-    static checkTools(): { claude: boolean; ccr: boolean } {
-        return {
-            claude: this.checkCommand('claude'),
-            ccr: this.checkCommand('ccr'),
+    static checkTools(command: string): { [key: string]: boolean } {
+        const executable = command.split(' ')[0];
+        const result: { [key: string]: boolean } = {
+            [executable]: this.checkCommand(executable)
         };
+
+        if (executable === 'ccr') {
+            result['claude'] = this.checkCommand('claude');
+        }
+
+        return result;
     }
 
     /**
      * Ensures tools are ready, throws error if missing
      */
-    static async ensureTools(): Promise<boolean> {
-        const { claude, ccr } = this.checkTools();
+    static async ensureTools(command: string = 'ccr code'): Promise<boolean> {
+        const status = this.checkTools(command);
+        const missing = Object.keys(status).filter(tool => !status[tool]);
 
-        if (claude && ccr) {
+        if (missing.length === 0) {
             return true;
         }
-
-        const missing = [];
-        if (!claude) missing.push('claude');
-        if (!ccr) missing.push('ccr');
 
         throw new Error(`Missing required tools: ${missing.join(', ')}. Please install them manually.`);
     }

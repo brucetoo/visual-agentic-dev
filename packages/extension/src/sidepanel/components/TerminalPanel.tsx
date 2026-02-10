@@ -13,10 +13,11 @@ interface TerminalPanelProps {
     onResize: (cols: number, rows: number) => void;
     isReady: boolean;
     isActive?: boolean;
+    agentCommand?: string;
 }
 
 export const TerminalPanel = forwardRef<TerminalPanelHandle, TerminalPanelProps>(
-    ({ onBinaryData, onResize, isReady, isActive = true }, ref) => {
+    ({ onBinaryData, onResize, isReady, isActive = true, agentCommand = 'claude code' }, ref) => {
         const terminalRef = useRef<HTMLDivElement>(null);
         const xtermRef = useRef<Terminal | null>(null);
         const fitAddonRef = useRef<FitAddon | null>(null);
@@ -213,7 +214,7 @@ export const TerminalPanel = forwardRef<TerminalPanelHandle, TerminalPanelProps>
                             borderRadius: '50%',
                             animation: 'spin 1s linear infinite'
                         }} />
-                        <span style={{ fontSize: '12px' }}>Starting Claude Code...</span>
+                        <span style={{ fontSize: '12px' }}>starting {agentCommand}...</span>
                         <style>{`
                             @keyframes spin {
                                 0% { transform: rotate(0deg); }

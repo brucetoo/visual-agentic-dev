@@ -3,6 +3,7 @@ import * as os from 'os';
 import { Terminal } from '@xterm/headless';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { ToolManager } from './ToolManager';
+import { AgentRegistry } from './AgentRegistry';
 
 const shell = os.platform() === 'win32'
     ? 'powershell.exe'
@@ -13,6 +14,7 @@ interface TerminalSession {
     headless: Terminal;
     serializer: SerializeAddon;
     useYolo: boolean;
+    agentCommand: string;
     isReady: boolean;
     historyBuffer: string[]; // Keep a small buffer for readiness detection
 }
@@ -43,26 +45,42 @@ export class TerminalManager {
         return this.sessions.get(id)?.isReady || false;
     }
 
+    private pendingCreations: Map<string, Promise<pty.IPty>> = new Map();
+
     async getOrCreateSession(
         id: string,
         cwd: string,
-        useYolo: boolean = false
+        useYolo: boolean = false,
+        agentCommand: string = 'ccr code'
     ): Promise<pty.IPty> {
+        // 1. Check if session exists AND configuration matches
         let sessionWrapper = this.sessions.get(id);
 
-        // If session exists but YOLO mode changed, we MUST restart it to apply new flag
-        if (sessionWrapper && sessionWrapper.useYolo !== useYolo) {
-            console.log(`[TerminalManager] YOLO mode changed for session ${id}. Restarting...`);
-            this.terminateSession(id);
-            sessionWrapper = undefined;
+        if (sessionWrapper) {
+            const configChanged = sessionWrapper.useYolo !== useYolo || sessionWrapper.agentCommand !== agentCommand;
+
+            if (configChanged) {
+                console.log(`[TerminalManager] Configuration changed for session ${id}. Restarting...`);
+                this.terminateSession(id);
+                sessionWrapper = undefined;
+            } else {
+                return sessionWrapper.pty;
+            }
         }
 
-        if (!sessionWrapper) {
-            console.log(`[TerminalManager] Creating new session for project: ${cwd} (useYolo: ${useYolo})`);
+        // 2. Check if creation is already in progress
+        if (this.pendingCreations.has(id)) {
+            console.log(`[TerminalManager] Joining pending creation for session ${id}`);
+            return this.pendingCreations.get(id)!;
+        }
 
-            // Ensure tools are installed before launching
+        // 3. Start new creation
+        const creationPromise: Promise<pty.IPty> = (async () => {
+            console.log(`[TerminalManager] Creating new session for project: ${cwd} (useYolo: ${useYolo}, command: ${agentCommand})`);
+
             try {
-                await ToolManager.ensureTools();
+                // Ensure tools are installed before launching
+                await ToolManager.ensureTools(agentCommand);
             } catch (error) {
                 console.error(`[TerminalManager] Tool check failed: ${(error as Error).message}`);
                 throw error; // Re-throw to be handled by caller (WebSocketServer)
@@ -97,49 +115,36 @@ export class TerminalManager {
             let historyBuffer: string[] = [];
 
             // --- Readiness Detection Logic ---
-
-
-            // Markers that indicate Claude Code is interactive/ready
-            // e.g. "Welcome back!", "Try", or the prompt "> " or specific control sequences
-            const readyMarkers = [
-                'Welcome back',
-                'Try "',      // Suggestion text (generic)
-                'bypass permissions',
-                '\u276F',     // The prompt character often used by Claude Code
-                '/model to try', // Hint text often present at startup
-                '> '          // Standard prompt fallback
-            ];
+            const readyMarkers = AgentRegistry.getReadyMarkers(agentCommand);
+            console.log(`[TerminalManager] Using readiness markers for '${agentCommand}':`, readyMarkers);
 
             sessionWrapper = {
                 pty: ptyProcess,
                 headless,
                 serializer,
                 useYolo,
+                agentCommand,
                 isReady: false,
                 historyBuffer
             };
 
             // Capture output for history & readiness
             ptyProcess.onData((data) => {
-                if (sessionWrapper) {
-                    // Write to headless terminal for state tracking
-                    sessionWrapper.headless.write(data);
-
-                    // Buffer for readiness detection only
-                    sessionWrapper.historyBuffer.push(data);
-                    if (sessionWrapper.historyBuffer.length > this.READINESS_BUFFER_SIZE) {
-                        sessionWrapper.historyBuffer.shift();
+                const currentSession = this.sessions.get(id);
+                if (currentSession && currentSession.pty.pid === ptyProcess.pid) {
+                    currentSession.headless.write(data);
+                    currentSession.historyBuffer.push(data);
+                    if (currentSession.historyBuffer.length > this.READINESS_BUFFER_SIZE) {
+                        currentSession.historyBuffer.shift();
                     }
 
-                    // Check for readiness if not already ready
-                    if (!sessionWrapper.isReady) {
+                    if (!currentSession.isReady) {
                         // eslint-disable-next-line no-control-regex
                         const cleanData = data.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
-                        // Check logic remains same, but we check `data` chunk mainly
                         const hasMarker = readyMarkers.some(marker => cleanData.includes(marker) || data.includes(marker));
 
                         if (hasMarker) {
-                            sessionWrapper.isReady = true;
+                            currentSession.isReady = true;
                             console.log(`[TerminalManager] Session ${id} is READY. Match found.`);
                             this._onReady(id);
                         }
@@ -149,26 +154,38 @@ export class TerminalManager {
 
             ptyProcess.onExit(({ exitCode, signal }: { exitCode: number; signal?: number }) => {
                 console.log(`[TerminalManager] Session ${id} exited with code ${exitCode}, signal ${signal}`);
-                if (this.sessions.get(id) === sessionWrapper) {
+                const current = this.sessions.get(id);
+                if (current && current.pty.pid === ptyProcess.pid) {
                     this.sessions.delete(id);
                 }
             });
 
             this.sessions.set(id, sessionWrapper);
 
-            // Auto-launch ccr code
-            const launchCmd = useYolo ? 'ccr code --dangerously-skip-permissions' : 'ccr code';
+            // Auto-launch agent command
+            let launchCmd = agentCommand;
+            if (useYolo) {
+                launchCmd += ' --dangerously-skip-permissions';
+            }
+
             console.log(`[TerminalManager] Launching: ${launchCmd}`);
             ptyProcess.write(`${launchCmd}\r`);
-        } else {
-            // If reusing existing session, it's likely already ready.
-            // We should probably trigger ready immediately if it's been running for a bit?
-            // BUT now we have explicit state.
-            // If session is ALREADY ready, getting it here might need to notify caller?
-            // The caller (WebSocketServer) will verify `isSessionReady`.
-        }
 
-        return sessionWrapper.pty;
+            return ptyProcess;
+
+        })(); // Immediately invoke async function
+
+        // Add to pending creations
+        this.pendingCreations.set(id, creationPromise);
+
+        // Remove from pending map when done (success or failure)
+        creationPromise.finally(() => {
+            if (this.pendingCreations.get(id) === creationPromise) {
+                this.pendingCreations.delete(id);
+            }
+        });
+
+        return creationPromise;
     }
 
     sendData(id: string, data: string): void {

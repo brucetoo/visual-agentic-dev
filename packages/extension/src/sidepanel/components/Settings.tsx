@@ -7,9 +7,10 @@ interface SettingsProps {
     onProjectPathChange: (path: string) => void;
     onConnect: () => void;
     onDisconnect: () => void;
+    onResetSession: () => void;
     status: ConnectionStatus;
     onClose: () => void;
-    isAutoDetected?: boolean;
+    isAutoDetected: boolean;
 }
 
 export const Settings: React.FC<SettingsProps> = ({
@@ -17,9 +18,10 @@ export const Settings: React.FC<SettingsProps> = ({
     onProjectPathChange,
     onConnect,
     onDisconnect,
+    onResetSession,
     status,
     onClose,
-    isAutoDetected = false,
+    isAutoDetected,
 }) => {
     const [localPath, setLocalPath] = useState(projectPath);
 
@@ -32,6 +34,25 @@ export const Settings: React.FC<SettingsProps> = ({
         onProjectPathChange(localPath);
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            onProjectPathChange(localPath);
+        }
+    };
+
+    const [agentCommand, setAgentCommand] = useState(localStorage.getItem('vdev_agent_command') || 'ccr code');
+
+    const handleSaveAgentCommand = () => {
+        const oldCommand = localStorage.getItem('vdev_agent_command') || 'ccr code';
+        if (agentCommand !== oldCommand) {
+            localStorage.setItem('vdev_agent_command', agentCommand);
+
+            if (confirm('Agent command changed. We need to reset the current session to apply changes. Continue?')) {
+                onResetSession();
+            }
+        }
+    };
+
     return (
         <div className="settings-panel">
             <header className="vdev-header">
@@ -42,6 +63,25 @@ export const Settings: React.FC<SettingsProps> = ({
             </header>
 
             <div className="settings-content">
+                <div className="setting-group">
+                    <label>
+                        <span className="setting-label">
+                            Agent Command
+                        </span>
+                        <span className="setting-hint">Command to run the agent (ccr code or claude)</span>
+                    </label>
+                    <div className="setting-input-row">
+                        <select
+                            value={agentCommand}
+                            onChange={(e) => setAgentCommand(e.target.value)}
+                        >
+                            <option value="ccr code">ccr code</option>
+                            <option value="claude">claude</option>
+                        </select>
+                        <button onClick={handleSaveAgentCommand}>Save</button>
+                    </div>
+                </div>
+
                 <div className="setting-group">
                     <label>
                         <span className="setting-label">
