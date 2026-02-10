@@ -103,19 +103,31 @@ export class VDevWebSocketServer {
     private activePtys: Map<string, any> = new Map();
 
     private async ensureSession(sessionId: string, projectPath: string, useYolo: boolean = false): Promise<void> {
-        // We modify getOrCreateSession signature on the fly if needed, but here it's fine.
-        // If YOLO mode changes, this returns a NEW pty object.
-        const sessionPty = await this.terminalManager.getOrCreateSession(sessionId, projectPath, useYolo);
+        try {
+            // We modify getOrCreateSession signature on the fly if needed, but here it's fine.
+            // If YOLO mode changes, this returns a NEW pty object.
+            const sessionPty = await this.terminalManager.getOrCreateSession(sessionId, projectPath, useYolo);
 
-        const lastPty = this.activePtys.get(sessionId);
+            const lastPty = this.activePtys.get(sessionId);
 
-        // If we haven't seen this PTY before (New session OR Restarted session), attach listener
-        if (lastPty !== sessionPty) {
-            console.log(`[VDev Bridge] Attaching listener to new PTY for session ${sessionId}`);
-            sessionPty.onData((data: string) => {
-                this.broadcastToSession(sessionId, data);
+            // If we haven't seen this PTY before (New session OR Restarted session), attach listener
+            if (lastPty !== sessionPty) {
+                console.log(`[VDev Bridge] Attaching listener to new PTY for session ${sessionId}`);
+                sessionPty.onData((data: string) => {
+                    this.broadcastToSession(sessionId, data);
+                });
+                this.activePtys.set(sessionId, sessionPty);
+            }
+        } catch (error) {
+            console.error(`[VDev Bridge] Error ensuring session ${sessionId} for project ${projectPath}:`, error);
+            const errorMessage = (error as Error).message || String(error);
+            this.broadcastToSession(sessionId, {
+                type: 'TERMINAL_OUTPUT',
+                id: 'broadcast',
+                payload: { data: `\r\n\x1b[31mError: Failed to ensure terminal session. ${errorMessage}\r\nCheck if 'npx' execution environment has correct permissions and 'node-pty' is compatible.\x1b[0m\r\n` }
             });
-            this.activePtys.set(sessionId, sessionPty);
+            // We should arguably re-throw or handle the fact that session is not ready?
+            // But for now, notifying the client is key.
         }
     }
 
@@ -280,10 +292,19 @@ export class VDevWebSocketServer {
         if (projectPath) {
             const sessionId = this.getSessionId(projectPath);
             this.subscribeToSession(ws, sessionId, subscribedSessions);
-            await this.ensureSession(sessionId, projectPath, !!useYolo);
-
-            if (data) {
-                this.terminalManager.sendData(sessionId, data);
+            try {
+                await this.ensureSession(sessionId, projectPath, !!useYolo);
+                if (data) {
+                    this.terminalManager.sendData(sessionId, data);
+                }
+            } catch (error) {
+                console.error('[VDev Bridge] Error ensuring session likely due to spawn failure:', error);
+                const errorMessage = (error as Error).message || String(error);
+                this.send(ws, {
+                    type: 'TERMINAL_OUTPUT',
+                    id: message.id,
+                    payload: { data: `\r\n\x1b[31mError: Failed to start terminal session. ${errorMessage}\x1b[0m\r\n` }
+                });
             }
         }
     }

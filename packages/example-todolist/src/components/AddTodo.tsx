@@ -32,7 +32,7 @@ export function AddTodo({ onAdd, onInvertAll }: AddTodoProps) {
                     className="add-todo-button"
                     style={{ backgroundImage: "linear-gradient(135deg, #ff9a9e, #fad0c4)" }}
                 >
-                    提交
+                    提交2
                 </button>
                 <button
                     type="button"

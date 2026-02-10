@@ -135,6 +135,8 @@ function findProjectRoot(startPath) {
 // src/utils/TerminalManager.ts
 var pty = __toESM(require("node-pty"));
 var os = __toESM(require("os"));
+var path2 = __toESM(require("path"));
+var fs2 = __toESM(require("fs"));
 var import_headless = require("@xterm/headless");
 var import_addon_serialize = require("@xterm/addon-serialize");
 
@@ -233,13 +235,56 @@ var TerminalManager = class {
       console.log(`[TerminalManager] Creating new session for project: ${cwd} (useYolo: ${useYolo})`);
       await ToolManager.ensureTools();
       console.log(`[TerminalManager] Spawning shell: ${shell} in verified CWD: ${cwd}`);
-      const ptyProcess = pty.spawn(shell, [], {
-        name: "xterm-color",
-        cols: 80,
-        rows: 24,
-        cwd,
-        env: { ...process.env }
-      });
+      const nodePath = path2.dirname(process.execPath);
+      const env = { ...process.env };
+      env.PATH = `${nodePath}${path2.delimiter}${env.PATH || ""}`;
+      console.log("[TerminalManager] --- Diagnostic Check ---");
+      console.log(`[TerminalManager] Platform: ${os.platform()}, Arch: ${os.arch()}`);
+      console.log(`[TerminalManager] Node Version: ${process.version}`);
+      console.log(`[TerminalManager] Exec Path: ${process.execPath}`);
+      console.log(`[TerminalManager] Shell Path: ${shell}`);
+      try {
+        if (fs2.existsSync(shell)) {
+          console.log(`[TerminalManager] Shell exists at ${shell}`);
+          try {
+            fs2.accessSync(shell, fs2.constants.X_OK);
+            console.log(`[TerminalManager] Shell is executable`);
+          } catch (e) {
+            console.error(`[TerminalManager] Shell is NOT executable: ${e}`);
+          }
+        } else {
+          console.error(`[TerminalManager] Shell does NOT exist at ${shell}`);
+        }
+      } catch (e) {
+        console.error(`[TerminalManager] Error checking shell: ${e}`);
+      }
+      console.log(`[TerminalManager] CWD: ${cwd}`);
+      try {
+        if (fs2.existsSync(cwd)) {
+          console.log(`[TerminalManager] CWD exists`);
+        } else {
+          console.error(`[TerminalManager] CWD does NOT exist`);
+        }
+      } catch (e) {
+        console.error(`[TerminalManager] Error checking CWD: ${e}`);
+      }
+      console.log(`[TerminalManager] PATH: ${env.PATH}`);
+      console.log("[TerminalManager] ------------------------");
+      let ptyProcess;
+      try {
+        ptyProcess = pty.spawn(shell, [], {
+          name: "xterm-color",
+          cols: 80,
+          rows: 24,
+          cwd,
+          env
+        });
+      } catch (error) {
+        console.error("[TerminalManager] Failed to spawn shell:", error);
+        console.error("[TerminalManager] Shell:", shell);
+        console.error("[TerminalManager] CWD:", cwd);
+        throw error;
+      }
       const headless = new import_headless.Terminal({
         allowProposedApi: true,
         cols: 80,
@@ -426,14 +471,27 @@ var VDevWebSocketServer = class {
     });
   }
   async ensureSession(sessionId, projectPath, useYolo = false) {
-    const sessionPty = await this.terminalManager.getOrCreateSession(sessionId, projectPath, useYolo);
-    const lastPty = this.activePtys.get(sessionId);
-    if (lastPty !== sessionPty) {
-      console.log(`[VDev Bridge] Attaching listener to new PTY for session ${sessionId}`);
-      sessionPty.onData((data) => {
-        this.broadcastToSession(sessionId, data);
+    try {
+      const sessionPty = await this.terminalManager.getOrCreateSession(sessionId, projectPath, useYolo);
+      const lastPty = this.activePtys.get(sessionId);
+      if (lastPty !== sessionPty) {
+        console.log(`[VDev Bridge] Attaching listener to new PTY for session ${sessionId}`);
+        sessionPty.onData((data) => {
+          this.broadcastToSession(sessionId, data);
+        });
+        this.activePtys.set(sessionId, sessionPty);
+      }
+    } catch (error) {
+      console.error(`[VDev Bridge] Error ensuring session ${sessionId} for project ${projectPath}:`, error);
+      const errorMessage = error.message || String(error);
+      this.broadcastToSession(sessionId, {
+        type: "TERMINAL_OUTPUT",
+        id: "broadcast",
+        payload: { data: `\r
+\x1B[31mError: Failed to ensure terminal session. ${errorMessage}\r
+Check if 'npx' execution environment has correct permissions and 'node-pty' is compatible.\x1B[0m\r
+` }
       });
-      this.activePtys.set(sessionId, sessionPty);
     }
   }
   subscribeToSession(ws, sessionId, subscribedSessions) {
@@ -551,9 +609,21 @@ ${prompt}
     if (projectPath) {
       const sessionId = this.getSessionId(projectPath);
       this.subscribeToSession(ws, sessionId, subscribedSessions);
-      await this.ensureSession(sessionId, projectPath, !!useYolo);
-      if (data) {
-        this.terminalManager.sendData(sessionId, data);
+      try {
+        await this.ensureSession(sessionId, projectPath, !!useYolo);
+        if (data) {
+          this.terminalManager.sendData(sessionId, data);
+        }
+      } catch (error) {
+        console.error("[VDev Bridge] Error ensuring session likely due to spawn failure:", error);
+        const errorMessage = error.message || String(error);
+        this.send(ws, {
+          type: "TERMINAL_OUTPUT",
+          id: message.id,
+          payload: { data: `\r
+\x1B[31mError: Failed to start terminal session. ${errorMessage}\x1B[0m\r
+` }
+        });
       }
     }
   }

@@ -1,6 +1,6 @@
 {
     "name": "@visual-dev/bridge-server",
-    "version": "1.0.0",
+    "version": "1.1.3",
     "description": "Bridge server for Visual Dev Tool - connects browser extension to Claude Code CLI",
     "main": "./dist/index.js",
     "module": "./dist/index.mjs",
