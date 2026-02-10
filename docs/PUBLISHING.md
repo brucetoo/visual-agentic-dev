@@ -42,19 +42,19 @@ The following packages are published to NPM:
 
 1. **Login to NPM**:
    ```bash
-   npm login
+   npm login --registry=https://registry.npmjs.org/
    ```
 
 2. **Publish React DevTools**:
    ```bash
    cd packages/react-devtools
-   npm publish --access public
+   npm publish --access public --registry=https://registry.npmjs.org/
    ```
 
 3. **Publish Bridge Server**:
    ```bash
    cd ../bridge-server
-   npm publish --access public
+   npm publish --access public --registry=https://registry.npmjs.org/
    ```
 
 ---
@@ -145,6 +145,5 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
     # Bridge Server & React DevTools
     pnpm -r publish --access public
     
-    # Extension (Manual)
     # Follow the steps in section 3 to pack and upload
     ```

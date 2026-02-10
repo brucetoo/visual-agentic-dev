@@ -14,7 +14,42 @@ An immersive browser development environment that allows developers to click on 
 ## Demo
 ![alt text](image.png)
 
-## Quick Start (Local)
+## Quick Start (Release)
+
+### 1. Install Chrome Extension
+- Download from [Chrome Web Store](https://chromewebstore.google.com/) (Coming Soon)
+- Or download `extension.zip` from [GitHub Releases](https://github.com/brucetoo/visual-agentic-dev/releases) and load strictly.
+
+### 2. Install Bridge Server
+```bash
+# Global install (Recommended)
+npm install -g @visual-agentic-dev/bridge-server
+
+# Start server
+vdev-server
+```
+
+### 3. Integrate into React Project
+```bash
+npm install @visual-agentic-dev/react-devtools
+```
+
+```tsx
+// App.tsx
+import { DevToolsProvider } from '@visual-agentic-dev/react-devtools';
+
+export default function App() {
+  return (
+    <DevToolsProvider enabled={process.env.NODE_ENV === 'development'}>
+      <YourApp />
+    </DevToolsProvider>
+  );
+}
+```
+
+---
+
+## Quick Start (Local Development)
 
 ### 1. Install Dependencies
 
@@ -65,15 +100,18 @@ function App() {
 3. Click "Load unpacked"
 4. Select the `packages/extension/dist` directory
 
-### 6. Configure Agent
+---
+
+## Usage
+
+### 1. Configure Agent
 
 1. Open the extension sidebar.
 2. Click the **Settings** (⚙️) icon.
 3. Select your preferred agent (e.g., `ccr code` or `claude`).
 4. The terminal session will automatically reset and switch to the selected agent.
 
-
-### 7. Get Started
+### 2. Start Developing
 
 1. Start your React development server
 2. Start the Bridge Server
