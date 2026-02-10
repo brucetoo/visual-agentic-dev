@@ -84,6 +84,10 @@ Ensure your system has correctly configured the Claude Code CLI
 - `@visual-agentic-dev/bridge-server` - WebSocket Server (Connects Browser and Claude CLI)
 - `visual-agentic-dev-extension` - Chrome Extension (Sidebar UI)
 
+## Contributing
+
+We love contributions! Please read our [Contributing Guide](CONTRIBUTING.md) to get started.
+
 ## License
 
 © 2026 Bruce Too
