@@ -67,8 +67,7 @@ function App() {
 
 ### 6. Configure Claude Code CLI
 
-Ensure your system has correctly configured the Claude Code CLI:
-Internal Reference: https://bytedance.larkoffice.com/docx/Sh6RddSBhovG1IxQjCcc0MHpnph?from=from_parent_docx
+Ensure your system has correctly configured the Claude Code CLI
 
 ### 7. Get Started
 
