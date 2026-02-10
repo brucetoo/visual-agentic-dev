@@ -1,14 +1,14 @@
-# Visual Dev Tool - 架构设计文档
+# Visual Agentic Dev - Architecture Design Document
 
-## 概述
+## Overview
 
-Visual Dev Tool 是一个**沉浸式浏览器开发环境**，旨在让开发者**不脱离浏览器**即可完成代码修改、调试和命令行交互。
+Visual Agentic Dev is an **immersive browser development environment** designed to allow developers to complete code modifications, debugging, and command-line interactions **without leaving the browser**.
 
-核心理念通过 **Bridge Server** 将本地开发环境（Terminal/CLI）的能力无缝映射到浏览器侧边栏。目前不仅支持标准的终端操作，还深度集成了 **Claude Code CLI**，实现了"点击元素 -> AI 自动修改代码"闭环工作流。未来可扩展支持更多 CLI 工具（如 Gemini CLI, OpenCodex CLI等）。
+The core concept seamlesslessly maps local development environment capabilities (Terminal/CLI) to the browser sidebar via a **Bridge Server**. Currently, it not only supports standard terminal operations but also deeply integrates **Claude Code CLI**, enabling a "Click Element -> AI Automatically Modifies Code" closed-loop workflow. Future extensions may support more CLI tools (such as Gemini CLI, OpenCodex CLI, etc.).
 
 ---
 
-## 系统架构
+## System Architecture
 
 ![alt text](architecture.png)
 
@@ -22,73 +22,73 @@ Visual Dev Tool 是一个**沉浸式浏览器开发环境**，旨在让开发者
 │  │    React Fiber         │    │  │  ┌─────┐ ┌──────────────┐  │  │ │
 │  │    (_debugSource)      │    │  │  │ 🔍  │ │ ProjectTerm A│  │  │ │
 │  │                        │    │  │  └──┬──┘ └──────┬───────┘  │  │ │
-│  └───────────┬────────────┘    │  │     │           │ PTY A    │  │ │
-│              │                 │  │     │    ┌──────┴───────┐  │  │ │
-│              │                 │  │     │    │ ProjectTerm B│  │  │ │
-│              │                 │  │     │    └──────┬───────┘  │  │ │
-│              │ postMessage     │  │     │           │ PTY B    │  │ │
-│              └─────────────────┼──►     │           │          │  │ │
-│                                │  └─────┼───────────┼──────────┘  │ │
-│  ┌────────────────────────┐    │        │           │             │ │
-│  │     React App B        │    │  ┌─────┴───────────┴──────────┐  │ │
-│  │  (localhost:3001)      │    │  │     Content Script         │  │ │
-│  └────────────────────────┘    │  │     (Message Bridge)       │  │ │
-│                                │  └─────────────┬──────────────┘  │ │
-└────────────────────────────────┼────────────────┼─────────────────┘
-                                 │                │
-                                 │                │ WebSocket (ws://localhost:9527)
-                                 │                ▼
-                    ┌────────────┴────────────────────────────┐
-                    │      Bridge Server (Universal Proxy)    │
-                    │  ┌───────────────────────────────────┐  │
-                    │  │       WebSocket Server            │  │
-                    │  │   (Routes based on projectPath)   │  │
-                    │  └───────────────┬───────────────────┘  │
-                    │                  │                      │
-                    │  ┌───────────────▼───────────────────┐  │
-                    │  │       TerminalManager             │  │
-                    │  │  (Manages PTY Sessions)           │  │
-                    │  └───────────────┬───────────────────┘  │
-                    └──────────────────┼──────────────────────┘
-                                       │
-                                       ▼
-                    ┌──────────────────────────────────────────┐
-                    │            Local System Shell            │
-                    │  ┌──────────────┐      ┌──────────────┐  │
-                    │  │ Claude Code  │      │   Other CLI  │  │
-                    │  │ (Agent Mode) │      │ (Git/Docker) │  │
-                    │  └──────────────┘      └──────────────┘  │
-                    └──────────────────────────────────────────┘
+│  │  └───────────┬────────────┘ │  │     │           │ PTY A    │  │ │
+│  │              │              │  │     │    ┌──────┴───────┐  │  │ │
+│  │              │              │  │     │    │ ProjectTerm B│  │  │ │
+│  │              │              │  │     │    └──────┬───────┘  │  │ │
+│  │              │ postMessage  │  │     │           │ PTY B    │  │ │
+│  │              └──────────────┼──►     │           │          │  │ │
+│  │                             │  └─────┼───────────┼──────────┘  │ │
+│  │  ┌────────────────────────┐ │        │           │             │ │
+│  │  │     React App B        │ │  ┌─────┴───────────┴──────────┐  │ │
+│  │  │  (localhost:3001)      │ │  │     Content Script         │  │ │
+│  │  └────────────────────────┘ │  │     (Message Bridge)       │  │ │
+│  │                             │  └─────────────┬──────────────┘  │ │
+│  └─────────────────────────────┼────────────────┼─────────────────┘ │
+│                                │                │
+│                                │                │ WebSocket (ws://localhost:9527)
+│                                │                ▼
+│                   ┌────────────┴────────────────────────────┐
+│                   │      Bridge Server (Universal Proxy)    │
+│                   │  ┌───────────────────────────────────┐  │
+│                   │  │       WebSocket Server            │  │
+│                   │  │   (Routes based on projectPath)   │  │
+│                   │  └───────────────┬───────────────────┘  │
+│                   │                  │                      │
+│                   │  ┌───────────────▼───────────────────┐  │
+│                   │  │       TerminalManager             │  │
+│                   │  │  (Manages PTY Sessions)           │  │
+│                   │  └───────────────┬───────────────────┘  │
+│                   └──────────────────┼──────────────────────┘
+│                                      │
+│                                      ▼
+│                   ┌──────────────────────────────────────────┐
+│                   │            Local System Shell            │
+│                   │  ┌──────────────┐      ┌──────────────┐  │
+│                   │  │ Claude Code  │      │   Other CLI  │  │
+│                   │  │ (Agent Mode) │      │ (Git/Docker) │  │
+│                   │  └──────────────┘      └──────────────┘  │
+│                   └──────────────────────────────────────────┘
 ```
 
 ---
 
-## 模块设计
+## Module Design
 
 ### 1. React DevTools SDK (`@visual-dev/react-devtools`)
 
-**职责**: 在 React 应用中启用元素检查和源码定位
+**Responsibility**: Enable element inspection and source code location within React applications.
 
 ```
 packages/react-devtools/
 ├── src/
 │   ├── vite-plugin/
-│   │   └── jsx-source.ts      # Vite 插件 (可选，用于生产或其他构建环境)
+│   │   └── jsx-source.ts      # Vite Plugin (Optional, for production or other build environments)
 │   ├── babel-plugin/
-│   │   └── jsx-source.ts      # Babel 插件 (可选，用于 Webpack/Rsbuild)
+│   │   └── jsx-source.ts      # Babel Plugin (Optional, for Webpack/Rsbuild)
 │   ├── components/
-│   │   └── DevToolsProvider.tsx  # 主组件：检查模式 + 事件处理
+│   │   └── DevToolsProvider.tsx  # Main Component: Check Mode + Event Handling
 │   ├── overlay/
-│   │   ├── Highlighter.tsx    # 悬停高亮覆盖层
-│   │   └── SelectionBox.tsx   # 选中框 + 源码位置显示
+│   │   ├── Highlighter.tsx    # Hover Highlighting Overlay
+│   │   └── SelectionBox.tsx   # Selection Box + Source Position Display
 │   ├── utils/
-│   │   ├── messaging.ts       # 与扩展通信
-│   │   └── sourceLocator.ts   # 解析源码位置
+│   │   ├── messaging.ts       # Communication with Extension
+│   │   └── sourceLocator.ts   # Parse Source Position
 │   └── types.ts
 └── package.json
 ```
 
-#### 核心流程
+#### Core Flow
 
 ```mermaid
 sequenceDiagram
@@ -97,82 +97,82 @@ sequenceDiagram
     participant Provider as DevToolsProvider
     participant Ext as Chrome Extension
 
-    Note over Fiber: 开发模式
-    Fiber->>App: 自动关联 _debugSource
+    Note over Fiber: Development Mode
+    Fiber->>App: Automatically Associate _debugSource
 
-    Note over Provider: 运行阶段
+    Note over Provider: Runtime Phase
     Ext->>Provider: VDEV_START_INSPECT
-    Provider->>Provider: 启用检查模式
+    Provider->>Provider: Enable Inspect Mode
     
-    Note over Provider: 用户操作
-    Provider->>Provider: mousemove → 查找 Fiber 节点
-    Provider->>Provider: click → 获取 _debugSource
-    Provider->>Ext: VDEV_ELEMENT_SELECTED (源码位置)
+    Note over Provider: User Interaction
+    Provider->>Provider: mousemove → Find Fiber Node
+    Provider->>Provider: click → Get _debugSource
+    Provider->>Ext: VDEV_ELEMENT_SELECTED (Source Position)
 ```
 
 ---
 
 ### 2. Bridge Server (`@visual-dev/bridge-server`)
 
-**职责**: WebSocket 服务器，连接浏览器扩展与 Claude Code CLI
+**Responsibility**: WebSocket server connecting the browser extension and Claude Code CLI.
 
 ```
 packages/bridge-server/
 ├── src/
 │   ├── server/
-│   │   └── WebSocketServer.ts # WebSocket 服务 + 消息路由
+│   │   └── WebSocketServer.ts # WebSocket Service + Message Routing
 │   ├── claude/
-│   │   ├── ClaudeCodeRunner.ts  # 执行 Claude CLI
-│   │   └── PromptBuilder.ts     # 构建代码修改提示词
+│   │   ├── ClaudeCodeRunner.ts  # Execute Claude CLI
+│   │   └── PromptBuilder.ts     # Build Code Modification Prompts
 │   └── types.ts
 ├── bin/
-│   └── vdev-server.js         # CLI 入口
+│   └── vdev-server.js         # CLI Entry Point
 └── package.json
 ```
 
-#### 消息协议
+#### Message Protocol
 
-| 消息类型 | 方向 | 说明 |
+| Message Type | Direction | Description |
 |---------|------|------|
-| `EXECUTE_TASK` | Client → Server | 执行代码修改任务 |
-| `CANCEL_TASK` | Client → Server | 取消当前任务 |
-| `TASK_STARTED` | Server → Client | 任务开始 |
-| `TASK_PROGRESS` | Server → Client | 流式输出进度 |
-| `TASK_COMPLETED` | Server → Client | 任务完成 |
-| `TERMINAL_DATA` | Client ↔ Server | 终端输入/输出流 (需带 projectPath) |
-| `TERMINAL_RESIZE` | Client → Server | 终端调整大小 |
-| `RESOLVE_PROJECT_PATH` | Client → Server | 根据端口号解析项目路径 |
+| `EXECUTE_TASK` | Client → Server | Execute code modification task |
+| `CANCEL_TASK` | Client → Server | Cancel current task |
+| `TASK_STARTED` | Server → Client | Task started |
+| `TASK_PROGRESS` | Server → Client | Streaming output progress |
+| `TASK_COMPLETED` | Server → Client | Task completed |
+| `TERMINAL_DATA` | Client ↔ Server | Terminal input/output stream (must include projectPath) |
+| `TERMINAL_RESIZE` | Client → Server | Terminal resize |
+| `RESOLVE_PROJECT_PATH` | Client → Server | Resolve project path based on port number |
 
-#### 多项目支持 (Multi-Project Support)
+#### Multi-Project Support
 
-Bridge Server 现在维护一个 `TerminalManager`，它管理着多个独立的 PTY 会话 (Session)。
-- **Session ID**: 基于 `projectPath` 的哈希值生成，确保同一项目的不同 Tab 共享同一个终端会话。
-- **隔离性**: 每个 Session 对应一个独立的 Claude Code CLI 进程，互不干扰。
-- **动态发现**: 扩展根据当前 Tab 的端口号向 Server 查询 `projectPath`，自动切换到对应的终端会话。
+Bridge Server now maintains a `TerminalManager` which manages multiple independent PTY sessions.
+- **Session ID**: Generated based on the hash of `projectPath`, ensuring different Tabs of the same project share the same terminal session.
+- **Isolation**: Each Session corresponds to an independent Claude Code CLI process, without interference.
+- **Dynamic Discovery**: The extension queries the Server for `projectPath` based on the current Tab's port number and automatically switches to the corresponding terminal session.
 
 ---
 
 ### 3. Chrome Extension (`visual-dev-extension`)
 
-**职责**: 提供用户界面，协调 SDK 与 Bridge Server 通信
+**Responsibility**: Provide user interface, coordinate communication between SDK and Bridge Server.
 
 ```
 packages/extension/
 ├── src/
 │   ├── background/
-│   │   └── service-worker.ts  # 后台服务
+│   │   └── service-worker.ts  # Background Service
 │   ├── content/
-│   │   └── content-script.ts  # 页面注入脚本
+│   │   └── content-script.ts  # Page Injection Script
 │   ├── sidepanel/
-│   │   ├── App.tsx            # 主应用
+│   │   ├── App.tsx            # Main Application
 │   │   ├── components/
-│   │   │   ├── ChatPanel.tsx  # 聊天面板
-│   │   │   ├── ProjectTerminal.tsx # 项目专属终端组件
-│   │   │   ├── SourceInfo.tsx     # 源码信息显示 (支持多选)
-│   │   │   ├── StatusBar.tsx      # 连接状态栏
-│   │   │   └── Settings.tsx       # 设置面板
+│   │   │   ├── ChatPanel.tsx  # Chat Panel
+│   │   │   ├── ProjectTerminal.tsx # Project-Specific Terminal Component
+│   │   │   ├── SourceInfo.tsx     # Source Info Display (Multi-select)
+│   │   │   ├── StatusBar.tsx      # Connection Status Bar
+│   │   │   ├── Settings.tsx       # Settings Panel
 │   │   └── hooks/
-│   │       └── useWebSocket.ts    # WebSocket 通信 (支持多路复用)
+│   │       └── useWebSocket.ts    # WebSocket Communication (Multiplexing)
 │   └── shared/
 │       ├── types.ts
 │       └── constants.ts
@@ -184,117 +184,117 @@ packages/extension/
 
 ---
 
-## 数据流
+## Data Flow
 
 ```mermaid
 flowchart LR
-    subgraph Browser["浏览器"]
+    subgraph Browser["Browser"]
         A[React App] -->|React Fiber| B[DevToolsProvider]
         A -.->|data-vdev-source| B
         B -->|postMessage| C[Content Script]
         C -->|chrome.runtime| D[Side Panel]
     end
     
-    subgraph Server["本地服务"]
+    subgraph Server["Local Service"]
         D -->|WebSocket| E[Bridge Server]
         E -->|spawn| F[ccr code CLI]
         F -->|stream-json| E
     end
     
-    F -->|修改文件| G[(项目源码)]
+    F -->|Modify Files| G[(Project Source)]
 ```
 
 ---
 
-## 使用流程
+## User Flow
 
 ```mermaid
 sequenceDiagram
-    actor Dev as 开发者
+    actor Dev as Developer
     participant App as React App
-    participant Ext as Chrome 扩展
+    participant Ext as Chrome Extension
     participant Bridge as Bridge Server
     participant CLI as Claude CLI
 
-    Dev->>Ext: 点击 🔍 开始检查
+    Dev->>Ext: Click 🔍 to Start Inspecting
     Ext->>App: VDEV_START_INSPECT
     
-    Dev->>App: 点击目标元素
+    Dev->>App: Click Target Element
     App->>Ext: VDEV_ELEMENT_SELECTED<br/>(fileName, lineNumber)
     
-    Dev->>Ext: 输入修改指令<br/>"把这个按钮改成红色"
+    Dev->>Ext: Input Modification Command<br/>"Change this button to red"
     Ext->>Bridge: EXECUTE_TASK {source, instruction}
     
     Bridge->>CLI: ccr code -p "..."
-    CLI-->>Bridge: stream-json 输出
+    CLI-->>Bridge: stream-json Output
     Bridge-->>Ext: TASK_PROGRESS
     
-    CLI->>CLI: 修改源码文件
-    CLI-->>Bridge: 完成
+    CLI->>CLI: Modify Source Files
+    CLI-->>Bridge: Complete
     Bridge->>Ext: TASK_COMPLETED<br/>{filesModified}
     
-    Ext->>Dev: ✅ 显示结果
+    Ext->>Dev: ✅ Show Result
 ```
 
 ---
 
-## 技术栈
+## Tech Stack
 
-| 模块 | 技术 |
+| Module | Technology |
 |------|------|
-| 构建工具 | pnpm workspace + Turbo |
+| Build Tool | pnpm workspace + Turbo |
 | React SDK | React 18 + TypeScript + tsup |
-| 源码定位 | **React Fiber _debugSource (运行时)** |
-| 编译插件 | Vite 插件 / Babel 7 (备选) |
+| Source Location | **React Fiber _debugSource (Runtime)** |
+| Compilation Plugin | Vite Plugin / Babel 7 (Alternative) |
 | Bridge Server | Node.js + ws |
 | Chrome Extension | Vite + React + Manifest V3 |
-| AI 后端 | Claude Code CLI (ccr 代理) |
+| AI Backend | Claude Code CLI (ccr proxy) |
 
 ---
 
-## 关键设计决策
+## Key Design Decisions
 
-### 1. 源码定位方式
-- **选择**: **运行时 React Fiber 遍历 (首选)**
-- **原因**: 彻底解决编译时插件干扰 React Fast Refresh 导致的 HMR 不稳定问题。
-- **解决的问题**: 
-    - 解决了 HMR (热更新) 间歇性失效的问题。
-    - 解决了由于导出非组件对象导致的页面全量刷新问题。
-    - 简化了配置，开发者无需修改繁琐的构建配置即可使用。
-- **回退方案**: 依然支持 `data-vdev-*` 属性注入，以保证在非 React 或特殊构建环境下的兼容性。
+### 1. Source Location Strategy
+- **Choice**: **Runtime React Fiber Traversal (Preferred)**
+- **Reason**: Completely resolves HMR (Hot Module Replacement) instability caused by compile-time plugins interfering with React Fast Refresh.
+- **Problems Solved**: 
+    - Solved intermittent HMR failures.
+    - Solved full page refresh issues caused by exporting non-component objects.
+    - Simplified configuration; developers can use it without modifying cumbersome build configurations.
+- **Fallback**: Still supports `data-vdev-*` attribute injection to ensure compatibility in non-React or special build environments.
 
-### 2. 通信架构
-- **SDK ↔ Extension**: `window.postMessage` (同页面)
+### 2. Communication Architecture
+- **SDK ↔ Extension**: `window.postMessage` (Same Page)
 - **Extension ↔ Server**: WebSocket (ws://localhost:9527)
-- **原因**: 浏览器安全限制，需要分层通信
+- **Reason**: Browser security restrictions require layered communication.
 
-### 3. Claude CLI 集成
-- **命令**: `ccr code -p "..." --output-format stream-json`
-- **原因**: 流式输出支持实时反馈，JSON 格式便于解析
+### 3. Claude CLI Integration
+- **Command**: `ccr code -p "..." --output-format stream-json`
+- **Reason**: Streaming output supports real-time feedback, JSON format is easy to parse.
 
-### 4. 多终端架构 (Multi-Terminal)
-- **机制**: 为了支持同时开发多个项目，扩展会在侧边栏中为每个检测到的活动项目维护一个独立的 `activeProjects` 集合。
-- **UI**: 使用 `<ProjectTerminal />` 组件，每个组件对应一个项目路径。非当前项目的终端会被隐藏 (通过 CSS `height: 0` + `overflow: hidden`) 以保持连接和状态，但在 UI 上不可见。
+### 4. Multi-Terminal Architecture
+- **Mechanism**: To support developing multiple projects simultaneously, the extension maintains an independent `activeProjects` set in the sidebar for each detected active project.
+- **UI**: Uses `<ProjectTerminal />` components, each corresponding to a project path. Non-current project terminals are hidden (via CSS `height: 0` + `overflow: hidden`) to maintain connection and state, but are not visible in the UI.
 
-### 5. 终端输入清洗策略 (Robust Input Clearing)
-- **问题**: 在发送新指令前，终端输入框可能残留有用户之前的输入。
-- **解决方案**: **Split Command Strategy**
-    1. 发送 `Ctrl+C` (`\x03`)：取消当前可能正在输入的行或运行的命令。
-    2. 等待 50ms：让 PTY 充分处理中断信号和刷新缓冲区 (防止 Race Condition)。
-    3. 发送新指令：确保指令是在一个干净的 Prompt 上输入的。
-- **弃用方案**: 仅使用 `Ctrl+U` (可能清除不干净) 或 `Ctrl+L` (不清空输入行)。
-
----
-
-## 部署方式
-
-1. **Bridge Server**: 本地终端运行 `vdev-server`
-2. **Chrome Extension**: 加载未打包扩展 (`chrome://extensions/`)  
-3. **React SDK**: npm 安装到项目 + Babel 配置
+### 5. Robust Input Clearing Strategy
+- **Issue**: Terminal input box may have residual user input before sending a new instruction.
+- **Solution**: **Split Command Strategy**
+    1. Send `Ctrl+C` (`\x03`): Cancel any currently inputting line or running command.
+    2. Wait 50ms: Allow PTY to fully process interrupt signal and flush buffer (prevent Race Condition).
+    3. Send new instruction: Ensure instruction is entered on a clean Prompt.
+- **Deprecated Solutions**: Using only `Ctrl+U` (may not clear cleanly) or `Ctrl+L` (does not clear input line).
 
 ---
 
-## 文件结构总览
+## Deployment
+
+1. **Bridge Server**: Run `vdev-server` in local terminal
+2. **Chrome Extension**: Load unpacked extension (`chrome://extensions/`)  
+3. **React SDK**: npm install into project + Babel config
+
+---
+
+## File Structure Overview
 
 ```
 visual-dev-tool/
@@ -303,16 +303,16 @@ visual-dev-tool/
 │   │   ├── src/
 │   │   ├── package.json
 │   │   └── tsup.config.ts
-│   ├── bridge-server/         # 本地服务器
+│   ├── bridge-server/         # Local Server
 │   │   ├── src/
 │   │   ├── bin/
 │   │   ├── package.json
 │   │   └── tsup.config.ts
-│   └── extension/             # Chrome 扩展
-│       ├── src/
-│       ├── public/
-│       ├── package.json
-│       └── vite.config.ts
+│   ├── extension/             # Chrome Extension
+│   │   ├── src/
+│   │   ├── public/
+│   │   ├── package.json
+│   │   └── vite.config.ts
 ├── pnpm-workspace.yaml
 ├── turbo.json
 ├── tsconfig.base.json

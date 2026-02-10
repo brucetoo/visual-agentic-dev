@@ -16,7 +16,7 @@ export default declare((api, options: PluginOptions): PluginObj => {
     const exclude = options.exclude || [/node_modules/];
 
     return {
-        name: 'visual-dev-jsx-source',
+        name: 'visual-agentic-dev-jsx-source',
         visitor: {
             JSXOpeningElement(path: NodePath<t.JSXOpeningElement>, state) {
                 const filename = state.filename || '';

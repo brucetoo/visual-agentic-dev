@@ -1,47 +1,47 @@
-# Visual Dev Tool
+# Visual Agentic Dev
 
-一个可视化开发工具，让开发者在浏览器中点击 React 元素，通过侧边栏对话描述需求，由 Claude Code CLI 自动执行代码修改。
+An immersive browser development environment that allows developers to click on React elements in the browser, describe requirements via a sidebar chat, and have Claude Code CLI automatically execute code modifications.
 
-## 核心特性
+## Core Features
 
-- 🎯 **零配置源码定位**：利用 React Fiber 自动识别源码位置，无需在业务代码中插入冗余属性。
-- 📂 **多项目并行开发**：自动识别当前 Tab 所属项目，智能切换对应的终端会话，支持同时开发多个微前端应用。
-- 🖱️ **多元素批量修改**：支持选中多个页面元素，一次性发送给 Claude Code 进行批量修改。
-- ⌨️ **便捷快捷键**：通过 `Cmd + Shift + S` (Mac) 或 `Ctrl + Shift + S` (Windows/Linux) 快速进入元素选择模式。
-- 🚀 **智能侧边栏**：侧边栏状态与项目绑定，切换 Tab 时自动恢复该项目的上下文和终端历史。
-- 🛠 **内置终端集成**：直接在侧边栏运行 Claude Code，无需频繁切换窗口，提供沉浸式的 AI 结对编程体验。
+- 🎯 **Zero-Config Source Location**: Utilizes React Fiber to automatically identify source code locations without inserting redundant attributes into business code.
+- 📂 **Multi-Project Parallel Development**: Automatically identifies the project belonging to the current Tab and intelligently switches to the corresponding terminal session, supporting simultaneous development of multiple micro-frontend applications.
+- 🖱️ **Batch Element Modification**: Supports selecting multiple page elements and sending them to Claude Code for batch modification in one go.
+- ⌨️ **Convenient Shortcuts**: Quickly enter element selection mode via `Cmd + Shift + S` (Mac) or `Ctrl + Shift + S` (Windows/Linux).
+- 🚀 **Smart Sidebar**: Sidebar state is bound to the project; switching Tabs automatically restores the context and terminal history for that project.
+- 🛠 **Built-in Terminal Integration**: Run Claude Code directly in the sidebar without frequent window switching, providing an immersive AI pair programming experience.
 
-## 示例
+## Demo
 ![alt text](image-1.png)
 
-## 本地快速开始
+## Quick Start (Local)
 
-### 1. 安装依赖
+### 1. Install Dependencies
 
 ```bash
 pnpm install
 ```
 
-### 2. 构建所有包
+### 2. Build All Packages
 
 ```bash
 pnpm build
 ```
 
-### 3. 启动 Bridge Server
+### 3. Start Bridge Server
 
 ```bash
-# 构建并运行
+# Build and run
 pnpm --filter @visual-dev/bridge-server build
 node packages/bridge-server/bin/vdev-server.js
 ```
 
-### 4. 在你的 React 项目中集成
+### 4. Integrate into Your React Project
 
-只需安装 SDK 并在 App 中引入 Provider 即可。
+Simply install the SDK and introduce the Provider in your App.
 
 ```bash
-# 在你的 React 项目中
+# In your React project
 npm install /path/to/visual-dev-tool/packages/react-devtools
 ```
 
@@ -58,32 +58,32 @@ function App() {
 }
 ```
 
-### 5. 安装 Chrome 扩展
+### 5. Install Chrome Extension
 
-1. 打开 Chrome，访问 `chrome://extensions/`
-2. 开启「开发者模式」
-3. 点击「加载已解压的扩展程序」
-4. 选择 `packages/extension/dist` 目录
+1. Open Chrome and visit `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked"
+4. Select the `packages/extension/dist` directory
 
-### 6. 配置 Claude Code CLI
+### 6. Configure Claude Code CLI
 
-确保你的系统已正确配置 Claude Code CLI：
-司内参考：https://bytedance.larkoffice.com/docx/Sh6RddSBhovG1IxQjCcc0MHpnph?from=from_parent_docx
+Ensure your system has correctly configured the Claude Code CLI:
+Internal Reference: https://bytedance.larkoffice.com/docx/Sh6RddSBhovG1IxQjCcc0MHpnph?from=from_parent_docx
 
-### 7. 开始使用
+### 7. Get Started
 
-1. 启动你的 React 开发服务器
-2. 启动 Bridge Server
-3. 打开 Chrome 访问 localhost
-4. 点击扩展图标打开侧边栏（会自动识别项目路径并恢复历史状态）
-5. 点击 🔍 按钮或使用快捷键 `Cmd + Shift + S` 选择页面元素
-6. 在聊天框中描述你的修改需求
+1. Start your React development server
+2. Start the Bridge Server
+3. Open Chrome and visit localhost
+4. Click the extension icon to open the sidebar (it will automatically identify the project path and restore history state)
+5. Click the 🔍 button or use the shortcut `Cmd + Shift + S` to select page elements
+6. Describe your modification requirements in the chat box
 
-## 包结构
+## Package Structure
 
-- `@visual-dev/react-devtools` - React SDK (运行时定位)
-- `@visual-dev/bridge-server` - WebSocket 服务器 (连接浏览器和 Claude CLI)
-- `visual-dev-extension` - Chrome 扩展 (侧边栏 UI)
+- `@visual-dev/react-devtools` - React SDK (Runtime Source Location)
+- `@visual-dev/bridge-server` - WebSocket Server (Connects Browser and Claude CLI)
+- `visual-dev-extension` - Chrome Extension (Sidebar UI)
 
 ## License
 

@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Visual Dev Tool",
+    "name": "Visual Agentic Dev",
     "version": "1.0.0",
     "description": "点击 React 元素，通过 Claude Code 修改代码",
     "permissions": [
@@ -39,7 +39,7 @@
             "48": "icons/icon48.png",
             "128": "icons/icon128.png"
         },
-        "default_title": "Visual Dev Tool"
+        "default_title": "Visual Agentic Dev"
     },
     "icons": {
         "16": "icons/icon16.png",

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DevToolsProvider } from '@visual-dev/react-devtools';
+import { DevToolsProvider } from '@visual-agentic-dev/react-devtools';
 import { TodoList } from './components/TodoList';
 import { AddTodo } from './components/AddTodo';
 import { Header } from './components/Header';

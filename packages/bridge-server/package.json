@@ -1,7 +1,7 @@
 {
-    "name": "@visual-dev/bridge-server",
+    "name": "@visual-agentic-dev/bridge-server",
     "version": "1.1.3",
-    "description": "Bridge server for Visual Dev Tool - connects browser extension to Claude Code CLI",
+    "description": "Bridge server for Visual Agentic Dev - connects browser extension to Claude Code CLI",
     "main": "./dist/index.js",
     "module": "./dist/index.mjs",
     "types": "./dist/index.d.ts",
@@ -36,7 +36,7 @@
         "node": ">=18"
     },
     "keywords": [
-        "visual-dev",
+        "visual-agentic-dev",
         "bridge-server",
         "claude-code",
         "websocket"

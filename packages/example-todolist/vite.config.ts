@@ -11,6 +11,6 @@ export default defineConfig({
         }
     },
     optimizeDeps: {
-        exclude: ['@visual-dev/react-devtools']
+        exclude: ['@visual-agentic-dev/react-devtools']
     }
 });
