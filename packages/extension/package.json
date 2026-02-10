@@ -1,6 +1,6 @@
 {
     "name": "visual-agentic-dev-extension",
-    "version": "1.0.0",
+    "version": "1.1.4",
     "description": "Visual Agentic Dev Chrome Extension - click elements to edit code with Claude",
     "scripts": {
         "dev": "vite build --watch",

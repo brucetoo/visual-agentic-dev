@@ -105,11 +105,46 @@ The extension is published to the Chrome Web Store.
 
 ---
 
-## 5. Automation (Optional)
+## 5. Automated Versioning (Recommended)
 
-Consider using [Changesets](https://github.com/changesets/changesets) for automated versioning and publishing in the future.
+This project uses [Changesets](https://github.com/changesets/changesets) for version management.
 
-```bash
-pnpm add -D -w @changesets/cli
-pnpm changeset init
-```
+### Workflow
+
+1.  **Develop Features/Fixes**: Make your changes as usual.
+
+2.  **Add a Changeset**:
+    Before committing, run:
+    ```bash
+    pnpm changeset
+    ```
+    - Select the packages you modified.
+    - Select the semantic version bump (major/minor/patch).
+    - Enter a summary of the changes.
+    This creates a markdown file in `.changeset/` which should be committed.
+
+3.  **Version Bump (Release Time)**:
+    When you are ready to release, run:
+    ```bash
+    pnpm changeset version
+    ```
+    This command will:
+    - Consume the changeset files.
+    - Update `package.json` versions.
+    - Update `CHANGELOG.md` files.
+    - Update `pnpm-lock.yaml`.
+
+    Commit these changes:
+    ```bash
+    git commit -am "chore: version packages"
+    ```
+
+4.  **Publish**:
+    Now you can publish the updated packages:
+    ```bash
+    # Bridge Server & React DevTools
+    pnpm -r publish --access public
+    
+    # Extension (Manual)
+    # Follow the steps in section 3 to pack and upload
+    ```
