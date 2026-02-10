@@ -8,9 +8,9 @@ import './App.css';
 
 function App() {
     const [todos, setTodos] = useState<Todo[]>([
-        { id: 1, text: '集成 Visual Dev Tool', completed: true },
-        { id: 2, text: '验证 babel 插件', completed: false },
-        { id: 3, text: '测试元素定位功能', completed: false },
+        { id: 1, text: 'Integrate Visual Agentic Dev Tool', completed: true },
+        { id: 2, text: 'Verify babel plugin', completed: false },
+        { id: 3, text: 'Test element positioning function', completed: false },
     ]);
 
     const addTodo = (text: string) => {
@@ -35,12 +35,12 @@ function App() {
         <DevToolsProvider enabled={true}>
             <div className="app">
                 <Header />
-                <main className="main">
+                <main className="main" style={{ backgroundColor: "lightblue" }}>
                     <AddTodo onAdd={addTodo} onInvertAll={invertAllTodos} />
                     <TodoList todos={todos} onToggle={toggleTodo} onDelete={deleteTodo} />
                 </main>
                 <footer className="footer">
-                    <p>点击 Chrome 扩展 🔍 按钮选择任意元素，查看源码位置</p>
+                    <p>Click the extension 🔍 button to select any element and view source code position</p>
                 </footer>
             </div>
         </DevToolsProvider>

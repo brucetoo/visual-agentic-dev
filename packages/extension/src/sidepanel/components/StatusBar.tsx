@@ -9,10 +9,10 @@ interface StatusBarProps {
 
 export const StatusBar: React.FC<StatusBarProps> = ({ status, onConnect, onDisconnect }) => {
     const statusText = {
-        disconnected: '未连接',
-        connecting: '连接中...',
-        connected: '已连接',
-        error: '连接失败',
+        disconnected: 'Disconnected',
+        connecting: 'Connecting...',
+        connected: 'Connected',
+        error: 'Connection Failed',
     };
 
     return (
@@ -24,11 +24,11 @@ export const StatusBar: React.FC<StatusBarProps> = ({ status, onConnect, onDisco
 
             {status === 'disconnected' || status === 'error' ? (
                 <button onClick={onConnect} className="connect-btn">
-                    连接
+                    Connect
                 </button>
             ) : status === 'connected' ? (
                 <button onClick={onDisconnect} className="disconnect-btn">
-                    断开
+                    Disconnect
                 </button>
             ) : null}
         </div>

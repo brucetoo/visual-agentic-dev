@@ -44,7 +44,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             <div className="message-list">
                 {messages.length === 0 ? (
                     <div className="empty-state">
-                        <p>👋 选择页面元素，然后描述你想要的修改</p>
+                        <p>👋 Select page elements, then describe your desired changes</p>
                     </div>
                 ) : (
                     messages.map((msg, i) => (
@@ -67,11 +67,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                 />
                 <div className="input-actions">
                     <button type="submit" disabled={disabled || !input.trim()}>
-                        发送
+                        Send
                     </button>
                     {messages.length > 0 && (
                         <button type="button" onClick={onClear} className="clear-btn">
-                            清空
+                            Clear
                         </button>
                     )}
                 </div>

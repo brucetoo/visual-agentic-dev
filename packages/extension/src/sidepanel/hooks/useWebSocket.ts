@@ -62,7 +62,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         ws.onopen = () => {
             console.log('[useWebSocket] Connected');
             setStatus('connected');
-            addMessage('system', '✅ 已连接到 Bridge Server');
+            addMessage('system', '✅ Connected to Bridge Server');
         };
 
         ws.onmessage = (event) => {
@@ -78,7 +78,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
             switch (data.type) {
                 case 'TASK_STARTED':
-                    addMessage('system', '📤 已发送指令到终端...');
+                    addMessage('system', '📤 Sent command to terminal...');
                     break;
 
                 case 'TASK_COMPLETED':
@@ -106,7 +106,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         ws.onerror = (e) => {
             console.error('[useWebSocket] Connection error:', e);
             setStatus('error');
-            addMessage('system', '❌ 连接错误');
+            addMessage('system', '❌ Connection Error');
         };
 
         ws.onclose = (e) => {
@@ -129,7 +129,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     const disconnect = useCallback(() => {
         wsRef.current?.close();
         setStatus('disconnected');
-        addMessage('system', '已断开连接');
+        addMessage('system', 'Disconnected');
     }, [addMessage]);
 
     const sendTask = useCallback(async (payload: TaskPayload) => {

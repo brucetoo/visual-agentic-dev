@@ -15,23 +15,22 @@ export class PromptBuilder {
         const endLine = source.lineNumber + 10;
 
         return `
-你需要帮我修改代码。
+You need to help me modify the code.
 
-## 目标位置
-- 文件: ${source.fileName}
-- 行号: ${source.lineNumber}
-- 列号: ${source.columnNumber}
+## Target Location
+- File: ${source.fileName}
+- Line: ${source.lineNumber}
+- Column: ${source.columnNumber}
 
-请先使用 view_file 工具查看这个文件的第 ${startLine} 到 ${endLine} 行，了解上下文。
+Please first use the view_file tool to check lines ${startLine} to ${endLine} of this file to understand the context.
 
-## 任务
+## Task
 ${instruction}
 
-## 要求
-1. 只修改必要的代码，保持代码风格一致
-2. 如果需要添加新组件，请在合适的位置添加 import
-3. 如果需要添加样式，请使用内联样式或在合适的样式文件中添加
-4. 完成后简要说明你做了什么修改
-`.trim();
+## Requirements
+1. Modify only necessary code and maintain consistent code style.
+2. If adding new components, add imports in appropriate places.
+3. If adding styles, use inline styles or add to appropriate style files.
+4. Briefly explain what modifications you made after completion.`.trim();
     }
 }

@@ -147,20 +147,20 @@ const App: React.FC = () => {
     const updateTerminalPrompt = (selections: Array<{ source: SourceLocation; elementInfo: ElementInfo }>, targetPath: string, yolo: boolean) => {
         if (!targetPath || selections.length === 0) return;
 
-        let inputText = `你需要帮我修改代码。\n`;
-        inputText += `## 目标位置 (${selections.length} 个)\n`;
+        let inputText = `You need to help me modify the code.\n`;
+        inputText += `## Target Location (${selections.length} items)\n`;
 
         selections.forEach((item, index) => {
             const { fileName, lineNumber, columnNumber } = item.source;
             const startLine = Math.max(1, lineNumber - 10);
             const endLine = lineNumber + 10;
 
-            inputText += `${index + 1}. 文件: ${fileName}:${lineNumber} (Line ${lineNumber})\n`;
-            inputText += `   - 上下文: 请查看第 ${startLine} 到 ${endLine} 行\n`;
-            inputText += `   - 元素: <${item.elementInfo.tagName}.${item.elementInfo.className.split(' ')[0]}>\n`;
+            inputText += `${index + 1}. File: ${fileName}:${lineNumber} (Line ${lineNumber})\n`;
+            inputText += `   - Context: Please check lines ${startLine} to ${endLine}\n`;
+            inputText += `   - Element: <${item.elementInfo.tagName}.${item.elementInfo.className.split(' ')[0]}>\n`;
         });
 
-        inputText += `\n## 任务\n`;
+        inputText += `\n## Task\n`;
 
         // Send Ctrl+C to clear/cancel first
         sendTerminalData(`\x03`, targetPath, yolo);
@@ -463,7 +463,7 @@ const App: React.FC = () => {
             <div className="vdev-sidepanel vdev-not-supported">
                 <div className="not-supported-content">
                     <div className="not-supported-icon">⏳</div>
-                    <p>检测页面类型中...</p>
+                    <p>Detecting page type...</p>
                 </div>
             </div>
         );
@@ -476,13 +476,13 @@ const App: React.FC = () => {
         return (
             <div className="vdev-sidepanel vdev-not-supported">
                 <header className="vdev-header">
-                    <h1>🎨 Visual Dev</h1>
+                    <h1>🎨 Visual Agentic Dev</h1>
                 </header>
                 <div className="not-supported-content">
                     <div className="not-supported-icon">🚫</div>
-                    <h2>不支持线上页面</h2>
-                    <p>Visual Dev 仅支持本地开发服务器</p>
-                    <p className="hint">请打开 localhost 或 127.0.0.1 页面使用</p>
+                    <h2>Online pages not supported</h2>
+                    <p>Visual Agentic Dev only supports local development servers</p>
+                    <p className="hint">Please open localhost or 127.0.0.1 to use</p>
                 </div>
             </div>
         );
@@ -504,7 +504,7 @@ const App: React.FC = () => {
             <div className="vdev-sidepanel">
                 <header className="vdev-header">
                     <div className="header-left">
-                        <h1>🎨 Visual Dev</h1>
+                        <h1>🎨 Visual Agentic Dev</h1>
                         <div className={`status-indicator-compact ${status}`} title={`Status: ${status}`}>
                             <span className="status-dot"></span>
                         </div>
@@ -515,7 +515,7 @@ const App: React.FC = () => {
                             <button
                                 className="action-btn disconnect-btn"
                                 onClick={disconnect}
-                                title="断开连接"
+                                title="Disconnect"
                             >
                                 🔌
                             </button>
@@ -523,7 +523,7 @@ const App: React.FC = () => {
                             <button
                                 className="action-btn connect-btn"
                                 onClick={connect}
-                                title="连接服务器"
+                                title="Connect"
                             >
                                 🔗
                             </button>
@@ -570,7 +570,7 @@ const App: React.FC = () => {
                         <button
                             className={`action-btn inspect-btn ${isInspecting ? 'active' : ''}`}
                             onClick={toggleInspect}
-                            title="选择页面元素"
+                            title="Select Page Element"
                         >
                             {isInspecting ? '🎯' : '🔍'}
                         </button>
@@ -579,7 +579,7 @@ const App: React.FC = () => {
                         <button
                             className="action-btn settings-btn"
                             onClick={() => setShowSettings(true)}
-                            title="设置"
+                            title="Settings"
                         >
                             ⚙️
                         </button>
@@ -611,7 +611,7 @@ const App: React.FC = () => {
                 ) : (
                     // Fallback if no projects active yet, or just show empty state
                     <div className="empty-state">
-                        <p>请点击⚙️设置项目路径以启动终端</p>
+                        <p>Please click ⚙️ Settings to set project path and start terminal</p>
                     </div>
                 )}
             </div>

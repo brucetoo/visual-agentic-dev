@@ -13,8 +13,8 @@ export const SourceInfo: React.FC<SourceInfoProps> = ({ selectedElements, onRemo
     return (
         <div className="source-info">
             <div className="source-header">
-                <span className="source-label">选中元素 ({selectedElements.length})</span>
-                <button className="clear-selection" onClick={onClear} title="清除全部">
+                <span className="source-label">Selected Elements ({selectedElements.length})</span>
+                <button className="clear-selection" onClick={onClear} title="Clear All">
                     ✕
                 </button>
             </div>

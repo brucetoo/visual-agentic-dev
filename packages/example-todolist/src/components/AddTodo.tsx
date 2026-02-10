@@ -23,7 +23,7 @@ export function AddTodo({ onAdd, onInvertAll }: AddTodoProps) {
                 <input
                     type="text"
                     className="add-todo-input"
-                    placeholder="添加新任务..."
+                    placeholder="Add new task..."
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                 />
@@ -32,7 +32,7 @@ export function AddTodo({ onAdd, onInvertAll }: AddTodoProps) {
                     className="add-todo-button"
                     style={{ backgroundImage: "linear-gradient(135deg, #ff9a9e, #fad0c4)" }}
                 >
-                    提交2
+                    Submit
                 </button>
                 <button
                     type="button"
@@ -43,7 +43,7 @@ export function AddTodo({ onAdd, onInvertAll }: AddTodoProps) {
                         setShowModal(true);
                     }}
                 >
-                    加油呀
+                    Go for it
                 </button>
             </form>
             {showModal ? (
@@ -68,7 +68,7 @@ export function AddTodo({ onAdd, onInvertAll }: AddTodoProps) {
                             fontWeight: 600,
                         }}
                     >
-                        你确定吗？
+                        Are you sure?
                     </div>
                 </div>
             ) : null}

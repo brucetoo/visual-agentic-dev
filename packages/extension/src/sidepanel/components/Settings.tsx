@@ -35,8 +35,8 @@ export const Settings: React.FC<SettingsProps> = ({
     return (
         <div className="settings-panel">
             <header className="vdev-header">
-                <h1>⚙️ 设置</h1>
-                <button className="action-btn" onClick={onClose} title="关闭">
+                <h1>⚙️ Settings</h1>
+                <button className="action-btn" onClick={onClose} title="Close">
                     ✕
                 </button>
             </header>
@@ -45,14 +45,14 @@ export const Settings: React.FC<SettingsProps> = ({
                 <div className="setting-group">
                     <label>
                         <span className="setting-label">
-                            项目路径
+                            Project Path
                             {isAutoDetected && (
-                                <span className="auto-badge" title="从localhost端口自动检测">
-                                    🎯 自动识别
+                                <span className="auto-badge" title="Auto-detect from localhost port">
+                                    🎯 Auto-detected
                                 </span>
                             )}
                         </span>
-                        <span className="setting-hint">React 项目的绝对路径</span>
+                        <span className="setting-hint">Absolute path to React project</span>
                     </label>
                     <div className="setting-input-row">
                         <input
@@ -61,23 +61,23 @@ export const Settings: React.FC<SettingsProps> = ({
                             onChange={(e) => setLocalPath(e.target.value)}
                             placeholder="/path/to/your/react-project"
                         />
-                        <button onClick={handleSavePath}>保存</button>
+                        <button onClick={handleSavePath}>Save</button>
                     </div>
                 </div>
 
                 <div className="setting-group">
                     <label>
-                        <span className="setting-label">服务器连接</span>
+                        <span className="setting-label">Server Connection</span>
                         <span className="setting-hint">Bridge Server (ws://localhost:9527)</span>
                     </label>
                     <div className="setting-actions">
                         {status === 'connected' ? (
                             <button onClick={onDisconnect} className="disconnect-btn">
-                                断开连接
+                                Disconnect
                             </button>
                         ) : (
                             <button onClick={onConnect} className="connect-btn">
-                                连接服务器
+                                Connect to Server
                             </button>
                         )}
                         <span className={`status-dot ${status}`} />
@@ -85,12 +85,12 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
 
                 <div className="setting-group help">
-                    <h3>使用说明</h3>
+                    <h3>Instructions</h3>
                     <ol>
-                        <li>在终端运行 <code>vdev-server</code> 启动服务</li>
-                        <li>打开 localhost 项目，路径会自动识别</li>
-                        <li>回到主界面，选择页面元素</li>
-                        <li>描述想要的修改</li>
+                        <li>Run <code>vdev-server</code> in terminal to start service</li>
+                        <li>Open localhost project, path will be auto-detected</li>
+                        <li>Return to main interface, select page elements</li>
+                        <li>Describe desired modifications</li>
                     </ol>
                 </div>
             </div>

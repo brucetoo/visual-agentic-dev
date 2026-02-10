@@ -95,10 +95,9 @@ export class TerminalManager {
 
 
             // Markers that indicate Claude Code is interactive/ready
-            // e.g. "Welcome back!", "Try", "Visual Dev", or the prompt "> " or specific control sequences
+            // e.g. "Welcome back!", "Try", or the prompt "> " or specific control sequences
             const readyMarkers = [
                 'Welcome back',
-                'Visual Dev', // If we have a custom banner
                 'Try "',      // Suggestion text (generic)
                 'bypass permissions',
                 '\u276F',     // The prompt character often used by Claude Code

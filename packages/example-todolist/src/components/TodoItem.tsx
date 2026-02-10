@@ -83,21 +83,21 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
             <button
                 className="todo-delete"
                 onClick={() => setIsDeleteModalOpen(true)}
-                aria-label="删除"
+                aria-label="Delete"
             >
                 🗑️
             </button>
             {isDeleteModalOpen ? (
                 <div style={overlayStyle} role="dialog" aria-modal="true">
                     <div style={drawerStyle}>
-                        <div style={drawerContentStyle}>你好</div>
+                        <div style={drawerContentStyle}>Hello</div>
                         <div style={drawerActionsStyle}>
                             <button
                                 type="button"
                                 style={buttonStyle}
                                 onClick={() => setIsDeleteModalOpen(false)}
                             >
-                                关闭
+                                Close
                             </button>
                         </div>
                     </div>

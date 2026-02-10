@@ -32,7 +32,7 @@ pnpm build
 
 ```bash
 # Build and run
-pnpm --filter @visual-dev/bridge-server build
+pnpm --filter @visual-agentic-dev/bridge-server build
 node packages/bridge-server/bin/vdev-server.js
 ```
 
@@ -42,12 +42,12 @@ Simply install the SDK and introduce the Provider in your App.
 
 ```bash
 # In your React project
-npm install /path/to/visual-dev-tool/packages/react-devtools
+npm install /path/to/visual-agentic-dev/packages/react-devtools
 ```
 
 ```tsx
 // App.tsx
-import { DevToolsProvider } from '@visual-dev/react-devtools';
+import { DevToolsProvider } from '@visual-agentic-dev/react-devtools';
 
 function App() {
   return (
@@ -80,9 +80,9 @@ Ensure your system has correctly configured the Claude Code CLI
 
 ## Package Structure
 
-- `@visual-dev/react-devtools` - React SDK (Runtime Source Location)
-- `@visual-dev/bridge-server` - WebSocket Server (Connects Browser and Claude CLI)
-- `visual-dev-extension` - Chrome Extension (Sidebar UI)
+- `@visual-agentic-dev/react-devtools` - React SDK (Runtime Source Location)
+- `@visual-agentic-dev/bridge-server` - WebSocket Server (Connects Browser and Claude CLI)
+- `visual-agentic-dev-extension` - Chrome Extension (Sidebar UI)
 
 ## License
 

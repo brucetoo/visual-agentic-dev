@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Visual Agentic Dev",
     "version": "1.0.0",
-    "description": "点击 React 元素，通过 Claude Code 修改代码",
+    "description": "Click React elements to modify code via Claude Code",
     "permissions": [
         "activeTab",
         "tabs",
@@ -52,7 +52,7 @@
                 "default": "Ctrl+Shift+S",
                 "mac": "Command+Shift+S"
             },
-            "description": "切换元素选择模式"
+            "description": "Toggle element selection mode"
         }
     }
 }

@@ -65,7 +65,7 @@ The core concept seamlesslessly maps local development environment capabilities 
 
 ## Module Design
 
-### 1. React DevTools SDK (`@visual-dev/react-devtools`)
+### 1. React DevTools SDK (`@visual-agentic-dev/react-devtools`)
 
 **Responsibility**: Enable element inspection and source code location within React applications.
 
@@ -112,7 +112,7 @@ sequenceDiagram
 
 ---
 
-### 2. Bridge Server (`@visual-dev/bridge-server`)
+### 2. Bridge Server (`@visual-agentic-dev/bridge-server`)
 
 **Responsibility**: WebSocket server connecting the browser extension and Claude Code CLI.
 
@@ -152,7 +152,7 @@ Bridge Server now maintains a `TerminalManager` which manages multiple independe
 
 ---
 
-### 3. Chrome Extension (`visual-dev-extension`)
+### 3. Chrome Extension (`visual-agentic-dev-extension`)
 
 **Responsibility**: Provide user interface, coordinate communication between SDK and Bridge Server.
 
@@ -297,7 +297,7 @@ sequenceDiagram
 ## File Structure Overview
 
 ```
-visual-dev-tool/
+visual-agentic-dev/
 ├── packages/
 │   ├── react-devtools/        # React SDK
 │   │   ├── src/

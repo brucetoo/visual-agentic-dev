@@ -11,7 +11,7 @@ export function TodoList({ todos, onToggle, onDelete }: TodoListProps) {
     if (todos.length === 0) {
         return (
             <div className="todo-empty">
-                <p>🎉 没有待办事项！</p>
+                <p>🎉 No tasks!</p>
             </div>
         );
     }
