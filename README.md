@@ -12,7 +12,7 @@ An immersive browser development environment that allows developers to click on 
 - 🛠 **Built-in Terminal Integration**: Deeply integrated terminal with session persistence, history restoration, and smart context switching.
 
 ## Demo
-![alt text](image-1.png)
+![alt text](image.png)
 
 ## Quick Start (Local)
 
