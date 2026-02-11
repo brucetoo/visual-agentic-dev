@@ -3,8 +3,7 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
     entry: {
         index: 'src/index.ts',
-        'babel-plugin/jsx-source': 'src/babel-plugin/jsx-source.ts',
-        'vite-plugin/jsx-source': 'src/vite-plugin/jsx-source.ts',
+        'unplugin/jsx-source': 'src/unplugin/jsx-source.ts',
     },
     format: ['cjs', 'esm'],
     dts: true,

@@ -2,6 +2,7 @@ export interface SourceLocation {
     fileName: string;
     lineNumber: number;
     columnNumber: number;
+    componentName?: string;
 }
 
 export interface ElementInfo {

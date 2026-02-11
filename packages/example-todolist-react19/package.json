@@ -1,0 +1,27 @@
+{
+    "name": "example-todolist-react19",
+    "private": true,
+    "version": "1.0.1",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "react": "^19.0.0-rc",
+        "react-dom": "^19.0.0-rc",
+        "@visual-agentic-dev/react-devtools": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/react": "npm:types-react@rc",
+        "@types/react-dom": "npm:types-react-dom@rc",
+        "@vitejs/plugin-react": "^4.2.1",
+        "typescript": "^5.3.0",
+        "vite": "^5.0.0"
+    },
+    "overrides": {
+        "@types/react": "npm:types-react@rc",
+        "@types/react-dom": "npm:types-react-dom@rc"
+    }
+}

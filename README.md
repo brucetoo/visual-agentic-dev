@@ -50,6 +50,22 @@ export default function App() {
 }
 ```
 
+### 4. Not Work? Configure Build Plugin (For React 19+)
+
+React 19+ requires a build plugin for accurate source location **due to a breaking change** where `_debugSource` was removed (see [facebook/react#32574](https://github.com/facebook/react/issues/32574)). We provide a universal plugin to restore this functionality.
+
+**Vite Example:**
+```ts
+// vite.config.ts
+import { vitePlugin as visualDev } from '@visual-agentic-dev/react-devtools/unplugin';
+
+export default defineConfig({
+  plugins: [visualDev()],
+});
+```
+
+> For other bundlers (Webpack, Rspack, etc.), please see [packages/react-devtools/README.md](packages/react-devtools/README.md).
+
 ---
 
 ## Quick Start (Local Development)
@@ -95,6 +111,8 @@ function App() {
   );
 }
 ```
+
+> **Note for React 19+**: You must also configure the build plugin. See [Build Tool Configuration](#4-configure-build-plugin-required-for-react-19) above.
 
 ### 5. Install Chrome Extension
 
