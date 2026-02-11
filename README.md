@@ -12,7 +12,10 @@ An immersive browser development environment that allows developers to click on 
 - 🛠 **Built-in Terminal Integration**: Deeply integrated terminal with session persistence, history restoration, and smart context switching.
 
 ## Demo
-![alt text](image.png)
+> demo task description: 
+ add one more todo item, not done state, task name is "hey it's new one", clike this new item show dialog and say "you click me"
+
+https://github.com/user-attachments/assets/8bd41a47-18f4-4f37-9731-a88aac9404aa
 
 ## Quick Start (Release)
 

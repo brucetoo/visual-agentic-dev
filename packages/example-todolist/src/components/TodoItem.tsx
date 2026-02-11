@@ -60,6 +60,12 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
         setIsDeleteModalOpen(false);
     };
 
+    const handleItemClick = () => {
+        if (todo.text === "hey it's new one") {
+            window.alert('you click me');
+        }
+    };
+
     return (
         <li
             className={`todo-item ${todo.completed ? 'completed' : ''}`}
@@ -70,6 +76,7 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
             onMouseDown={() => setIsPressed(true)}
             onMouseUp={() => setIsPressed(false)}
             onMouseLeave={() => setIsPressed(false)}
+            onClick={handleItemClick}
         >
             <label className="todo-label">
                 <input
