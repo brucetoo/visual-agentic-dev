@@ -44,6 +44,7 @@ pnpm-debug.log*
 # Extensions
 packages/extension/dist
 packages/extension/.output
+packages/extension/extension.zip
 
 # Temporary files
 tmp
@@ -52,5 +53,3 @@ temp
 # Large Media Files
 demo.gif
 image.png
-extension.zip
-
