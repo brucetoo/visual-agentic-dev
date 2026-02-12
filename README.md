@@ -159,9 +159,9 @@ chmod +x /your-path/pnpm/global/5/.pnpm/node-pty@1.1.0/node_modules/node-pty/pre
 
 ## Package Structure
 
-- `@visual-agentic-dev/react-devtools` - React SDK (Runtime Source Location)
-- `@visual-agentic-dev/bridge-server` - WebSocket Server (Connects Browser and Claude CLI)
-- `visual-agentic-dev-extension` - Chrome Extension (Sidebar UI)
+- `@visual-agentic-dev/react-devtools` [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbrucetoo%2Fvisual-agentic-dev%2Fmain%2Fpackages%2Freact-devtools%2Fpackage.json&query=%24.version&label=sdk)](https://github.com/brucetoo/visual-agentic-dev/blob/main/packages/react-devtools/package.json)
+- `@visual-agentic-dev/bridge-server` [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbrucetoo%2Fvisual-agentic-dev%2Fmain%2Fpackages%2Fbridge-server%2Fpackage.json&query=%24.version&label=server)](https://github.com/brucetoo/visual-agentic-dev/blob/main/packages/bridge-server/package.json)
+- `visual-agentic-dev-extension` [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbrucetoo%2Fvisual-agentic-dev%2Fmain%2Fpackages%2Fextension%2Fpackage.json&query=%24.version&label=extension)](https://github.com/brucetoo/visual-agentic-dev/blob/main/packages/extension/package.json)
 
 ## Contributing
 
