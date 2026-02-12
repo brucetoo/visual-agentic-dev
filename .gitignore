@@ -48,3 +48,9 @@ packages/extension/.output
 # Temporary files
 tmp
 temp
+
+# Large Media Files
+demo.gif
+image.png
+extension.zip
+
