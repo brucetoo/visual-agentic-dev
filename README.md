@@ -1,6 +1,6 @@
 # Visual Agentic Dev
 
-An immersive browser development environment that allows developers to click on React elements in the browser, describe requirements via a sidebar chat, and have Agentic CLI automatically execute code modifications.
+**Visual Agentic Dev** is an immersive browser development environment designed to allow developers to complete code modifications, debugging, and command-line interactions without leaving the browser. Its core **click-to-locate + agent edit loop** is exactly the kind of workflow that makes AI agents feel genuinely useful—moving beyond a simple "chat in a box" to become a powerful, integrated part of the development lifecycle.
 
 ## Core Features
 
