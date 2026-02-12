@@ -1,5 +1,11 @@
 # @visual-agentic-dev/react-devtools
 
+## 1.2.1
+
+### Patch Changes
+
+- Resolve the row quantity anomaly and repeated element selection issue in Element
+
 ## 1.2.0
 
 ### Minor Changes

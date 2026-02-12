@@ -48,15 +48,18 @@ We provide an **Universal Plugin** (unplugin) that supports Vite, Webpack, Rspac
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 import { vitePlugin as visualDev } from '@visual-agentic-dev/react-devtools/unplugin';
 
 export default defineConfig({
   plugins: [
-    // ... other plugins
-    visualDev(), 
+    visualDev(), // ⚠️ Must be placed BEFORE react()
+    react(),
   ],
 });
 ```
+
+> **⚠️ Plugin Ordering**: `visualDev()` must be placed **before** `react()` in the plugins array. This ensures source location attributes are injected before React processes the JSX.
 
 #### Webpack
 

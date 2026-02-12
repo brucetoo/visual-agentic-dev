@@ -62,6 +62,11 @@ export const SourceInfo: React.FC<SourceInfoProps> = ({ selectedElements, onRemo
                             <div className="element-info" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 <span className="tag-name">&lt;{item.elementInfo.tagName}&gt;</span>
                             </div>
+                            {item.elementInfo.textContent && (
+                                <div style={{ fontSize: '10px', color: 'var(--vdev-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '2px' }}>
+                                    {item.elementInfo.textContent.substring(0, 20)}{item.elementInfo.textContent.length > 20 ? '…' : ''}
+                                </div>
+                            )}
                         </div>
                     );
                 })}

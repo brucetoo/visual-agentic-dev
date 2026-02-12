@@ -57,10 +57,14 @@ React 19+ requires a build plugin for accurate source location **due to a breaki
 **Vite Example:**
 ```ts
 // vite.config.ts
+import react from '@vitejs/plugin-react';
 import { vitePlugin as visualDev } from '@visual-agentic-dev/react-devtools/unplugin';
 
 export default defineConfig({
-  plugins: [visualDev()],
+  plugins: [
+    visualDev(), // ⚠️ Must be placed BEFORE react()
+    react(),
+  ],
 });
 ```
 
@@ -140,6 +144,18 @@ function App() {
 4. Click the extension icon to open the sidebar (it will automatically identify the project path and restore history state)
 5. Click the 🔍 button or use the shortcut `Cmd + Shift + S` to select page elements
 6. Describe your modification requirements in the chat box
+
+## Troubleshooting
+
+### `Error: posix_spawnp failed` when starting `vdev-server`
+
+This is a known [node-pty issue](https://github.com/microsoft/node-pty/issues/845) where the `spawn-helper` binary lacks execute permissions. Fix it by running:
+
+```bash
+chmod +x /your-path/pnpm/global/5/.pnpm/node-pty@1.1.0/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper
+```
+
+> Replace `/your-path/` with your actual pnpm global store path. You can find it by running `pnpm store path`.
 
 ## Package Structure
 

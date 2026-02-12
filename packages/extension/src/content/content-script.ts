@@ -15,7 +15,11 @@ if ((window as any).__VDEV_CONTENT_SCRIPT_LOADED__) {
         if (event.data?.source !== 'vdev-react-sdk') return;
 
         // Forward to background/side panel
-        chrome.runtime.sendMessage(event.data);
+        try {
+            chrome.runtime.sendMessage(event.data);
+        } catch (e) {
+            // Extension context invalidated (e.g. after reload). Silently ignore.
+        }
     });
 
     // Forward messages from extension to page SDK

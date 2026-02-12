@@ -1,15 +1,10 @@
+import { SourceLocation } from '../types';
+
 /**
  * Source Location Detection Utilities
  * Reference implementation based on:
  * https://github.com/benjitaylor/agentation/blob/main/package/src/utils/source-location.ts
  */
-
-export interface SourceLocation {
-    fileName: string;
-    lineNumber: number;
-    columnNumber: number;
-    componentName?: string;
-}
 
 /**
  * React Fiber node structure (partial)
@@ -171,9 +166,8 @@ function findDebugSourceReact19(fiber: ReactFiber): { source: NonNullable<ReactF
 
     return null;
 }
-
 /**
- * Parse the data-vdev-source attribute value (Legacy/Fallback)
+ * Parse a source location from a data attribute value
  */
 export function parseSourceAttr(attrValue: string | null): SourceLocation | null {
     if (!attrValue) return null;
@@ -194,7 +188,21 @@ export function parseSourceAttr(attrValue: string | null): SourceLocation | null
  * Combines Fiber inspection and data attribute fallbacks
  */
 export function getSourceFromElement(element: HTMLElement, prefix = 'vdev'): SourceLocation | null {
-    // 1. Try React Fiber (Runtime)
+    // 1. Try Data attributes FIRST (High precision build-time info)
+    const file = element.getAttribute(`data-${prefix}-file`);
+    const line = element.getAttribute(`data-${prefix}-line`);
+    const col = element.getAttribute(`data-${prefix}-col`);
+
+    if (file && line) {
+        return {
+            fileName: file,
+            lineNumber: parseInt(line, 10),
+            columnNumber: col ? parseInt(col, 10) : 1,
+            componentName: element.tagName.toLowerCase()
+        };
+    }
+
+    // 2. Fallback: React Fiber (Runtime info)
     const fiber = getFiberFromElement(element);
     if (fiber) {
         // Try standard strategy
@@ -215,21 +223,6 @@ export function getSourceFromElement(element: HTMLElement, prefix = 'vdev'): Sou
         }
     }
 
-    // 2. Fallback: Data attributes (Build-time plugin)
-    // Check for explicit individual attributes from vite-plugin
-    const file = element.getAttribute(`data-${prefix}-file`);
-    const line = element.getAttribute(`data-${prefix}-line`);
-    const col = element.getAttribute(`data-${prefix}-col`);
-
-    if (file && line) {
-        return {
-            fileName: file,
-            lineNumber: parseInt(line, 10),
-            columnNumber: col ? parseInt(col, 10) : 1,
-            componentName: element.tagName.toLowerCase() // Simple fallback
-        };
-    }
-
     return null;
 }
 
@@ -239,9 +232,7 @@ export function getSourceFromElement(element: HTMLElement, prefix = 'vdev'): Sou
 export function findSourceElement(target: HTMLElement, prefix = 'vdev'): HTMLElement | null {
     let current: HTMLElement | null = target;
 
-    // Check up to Body
     while (current && current !== document.body) {
-        // Check if this element has source info via Fiber OR Attributes
         if (getSourceFromElement(current, prefix)) {
             return current;
         }

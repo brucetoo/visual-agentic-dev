@@ -4,8 +4,8 @@ import { vitePlugin as vdevJsxSource } from '@visual-agentic-dev/react-devtools/
 
 export default defineConfig({
     plugins: [
-        react(),
-        vdevJsxSource()
+        vdevJsxSource(),
+        react()
     ],
     server: {
         port: 3010,

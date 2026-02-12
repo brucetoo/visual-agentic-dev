@@ -1,5 +1,12 @@
 # example-todolist
 
+## 1.0.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @visual-agentic-dev/react-devtools@1.2.1
+
 ## 1.0.2
 
 ### Patch Changes

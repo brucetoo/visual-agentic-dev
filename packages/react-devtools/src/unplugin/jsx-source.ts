@@ -20,63 +20,63 @@ export const unplugin = createUnplugin((options: VdevPluginOptions | undefined =
 
     return {
         name: 'vdev-jsx-source',
-        enforce: 'post',
+        enforce: 'pre',
 
         transform(code: string, id: string) {
             if (!filter(id)) {
                 return null;
             }
 
-            // Skip if no JSX-like patterns (quick check)
-            if (!code.includes('jsx(') && !code.includes('jsxs(') && !code.includes('jsxDEV(')) {
-                return null;
-            }
-
             const magicString = new MagicString(code);
             let modified = false;
 
-            // Match jsx/jsxs/jsxDEV function calls
-            // Pattern: jsx("tagName", { props })  or  jsx(Component, { props })
-            const jsxCallRegex = /\b(jsx|jsxs|jsxDEV)\s*\(\s*(?:"([^"]+)"|'([^']+)'|([A-Z][a-zA-Z0-9_$.]*)|([a-z][a-zA-Z0-9_]*))\s*,\s*\{/g;
+            // Skip if no JSX-like patterns (quick check)
+            if (!code.includes('<')) {
+                return null;
+            }
 
-            // Simple line counting helper
-            // Note: This could be optimized but serves for now
+            // Match JSX opening tags
+            // Pattern: <TagName  (but not </TagName or <>)
+            const jsxTagRegex = /<([a-zA-Z0-9_$.]+)(\s|>|\/)/g;
+
+            // Improved line counting helper
+            const lines = code.split('\n');
             const getLineCol = (index: number) => {
-                let line = 1;
-                let lastNewline = -1;
-                for (let i = 0; i < index && i < code.length; i++) {
-                    if (code[i] === '\n') {
-                        line++;
-                        lastNewline = i;
+                let currentPos = 0;
+                for (let i = 0; i < lines.length; i++) {
+                    const lineLength = lines[i].length + 1; // +1 for newline
+                    if (currentPos + lineLength > index) {
+                        return { line: i + 1, col: index - currentPos };
                     }
+                    currentPos += lineLength;
                 }
-                return { line, col: index - lastNewline - 1 };
+                return { line: lines.length, col: index - currentPos };
             };
 
             let match;
-            while ((match = jsxCallRegex.exec(code)) !== null) {
-                const openBraceIndex = match.index + match[0].length - 1;
+            while ((match = jsxTagRegex.exec(code)) !== null) {
+                const tagName = match[1];
+                const tagStartIndex = match.index;
+                const afterTagNameIndex = tagStartIndex + 1 + tagName.length;
 
-                // Skip React Fragments (they don't support custom props)
-                const componentName = match[4] || match[5]; // Capture group 4 is Capitalized, 5 is lowercase
-                if (componentName && (componentName === 'Fragment' || componentName === 'React.Fragment')) {
+                // Skip closing tags (though regex avoids < /)
+                // Skip fragments <> or < >
+                if (!tagName || tagName === 'Fragment') {
                     continue;
                 }
 
-                const { line, col } = getLineCol(match.index);
+                const { line, col } = getLineCol(tagStartIndex);
 
                 // Check if already has our data attribute
-                // Optimization: check next 100 chars
-                const nextChars = code.slice(openBraceIndex + 1, openBraceIndex + 100);
-                if (nextChars.includes(`"data-${prefix}-file"`)) {
+                const nextChars = code.slice(afterTagNameIndex, afterTagNameIndex + 100);
+                if (nextChars.includes(`data-${prefix}-file`)) {
                     continue;
                 }
 
-                // Inject data attributes as first properties
-                // We use JSON.stringify for the file path to ensure it's properly escaped
-                const injection = `"data-${prefix}-file": ${JSON.stringify(id)}, "data-${prefix}-line": "${line}", "data-${prefix}-col": "${col}", `;
+                // Inject data attributes
+                const injection = ` data-${prefix}-file={${JSON.stringify(id)}} data-${prefix}-line="${line}" data-${prefix}-col="${col}"`;
 
-                magicString.appendLeft(openBraceIndex + 1, injection);
+                magicString.appendLeft(afterTagNameIndex, injection);
                 modified = true;
             }
 

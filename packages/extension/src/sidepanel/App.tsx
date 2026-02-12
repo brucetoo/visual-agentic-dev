@@ -38,6 +38,17 @@ const App: React.FC = () => {
 
     // Main project path (currently active)
     const [projectPath, setProjectPath] = useState<string>('');
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+    // Clear toast message after 3 seconds
+    useEffect(() => {
+        if (toastMessage) {
+            const timer = setTimeout(() => {
+                setToastMessage(null);
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [toastMessage]);
 
     // List of ALL known/active project paths for multi-terminal support
     const [activeProjects, setActiveProjects] = useState<Set<string>>(new Set());
@@ -145,10 +156,11 @@ const App: React.FC = () => {
             const newMap = new Map(prev);
             const currentList = newMap.get(projectPath) || [];
 
-            // Avoid duplicates (same file/line)
+            // Avoid duplicates (same file/line AND same content)
             const exists = currentList.find(item =>
                 item.source.fileName === newSelection.source.fileName &&
-                item.source.lineNumber === newSelection.source.lineNumber
+                item.source.lineNumber === newSelection.source.lineNumber &&
+                item.elementInfo.textContent === newSelection.elementInfo.textContent
             );
 
             if (!exists) {
@@ -158,6 +170,8 @@ const App: React.FC = () => {
 
                 // Construct prompt from UPDATED list
                 updateTerminalPrompt(updatedList, projectPath, useYolo);
+            } else {
+                setToastMessage('Element already selected');
             }
 
             return newMap;
@@ -182,6 +196,9 @@ const App: React.FC = () => {
             inputText += `${index + 1}. File: ${fileName}:${lineNumber} (Line ${lineNumber})\n`;
             inputText += `   - Context: Please check lines ${startLine} to ${endLine}\n`;
             inputText += `   - Element: <${item.elementInfo.tagName}.${item.elementInfo.className.split(' ')[0]}>\n`;
+            if (item.elementInfo.textContent) {
+                inputText += `   - Content: "${item.elementInfo.textContent.substring(0, 50)}"\n`;
+            }
         });
 
         inputText += `\n## Task\n`;
@@ -655,6 +672,12 @@ const App: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {toastMessage && (
+                <div className="vdev-toast">
+                    {toastMessage}
+                </div>
+            )}
         </>
     );
 };
