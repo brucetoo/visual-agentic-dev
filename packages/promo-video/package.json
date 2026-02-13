@@ -1,0 +1,29 @@
+{
+    "name": "@visual-agentic-dev/promo-video",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Promotional video for Visual Agentic Dev",
+    "scripts": {
+        "start": "remotion studio",
+        "build": "remotion render PromoVideo out/promo.mp4",
+        "upgrade": "remotion upgrade"
+    },
+    "dependencies": {
+        "@remotion/cli": "4.0.277",
+        "@remotion/google-fonts": "4.0.277",
+        "@remotion/transitions": "4.0.277",
+        "react": "18.3.1",
+        "react-dom": "18.3.1",
+        "remotion": "4.0.277"
+    },
+    "devDependencies": {
+        "@types/react": "^18.3.0",
+        "typescript": "^5.7.0"
+    },
+    "pnpm": {
+        "overrides": {
+            "react": "18.3.1",
+            "react-dom": "18.3.1"
+        }
+    }
+}
