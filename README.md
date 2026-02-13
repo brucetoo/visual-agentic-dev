@@ -2,6 +2,10 @@
 
 **Visual Agentic Dev** is an immersive browser development environment designed to allow developers to complete code modifications, debugging, and command-line interactions without leaving the browser. Its core **click-to-locate + agent edit loop** is exactly the kind of workflow that makes AI agents feel genuinely useful—moving beyond a simple "chat in a box" to become a powerful, integrated part of the development lifecycle.
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/099e936d-880c-4d3a-ab2d-b1f2e9a48556" alt="Visual Agentic Dev - Click → Locate → Agent Edit → Done" width="800" />
+</p>
+
 ## Core Features
 
 - 🎯 **Zero-Config Source Location**: Utilizes React Fiber to automatically identify source code locations without inserting redundant attributes into business code.
