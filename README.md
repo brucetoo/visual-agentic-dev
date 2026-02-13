@@ -15,7 +15,7 @@
 > demo task description: 
  add one more todo item, not done state, task name is "hey it's new one", clike this new item show dialog and say "you click me"
 
-https://github.com/user-attachments/assets/8bd41a47-18f4-4f37-9731-a88aac9404aa
+https://github.com/user-attachments/assets/159da464-4de4-4f5c-a6b0-71da8e27c57e
 
 ## Quick Start (Release)
 
