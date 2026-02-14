@@ -1,6 +1,6 @@
 {
     "name": "@visual-agentic-dev/bridge-server",
-    "version": "1.1.4",
+    "version": "1.1.5",
     "description": "Bridge server for Visual Agentic Dev - connects browser extension to Claude Code CLI",
     "main": "./dist/index.js",
     "module": "./dist/index.mjs",
@@ -20,7 +20,7 @@
         "clean": "rm -rf dist"
     },
     "dependencies": {
-        "node-pty": "^1.1.0",
+        "node-pty": "1.2.0-beta.11",
         "ws": "^8.16.0",
         "@xterm/headless": "^5.3.0",
         "@xterm/addon-serialize": "^0.14.0"
